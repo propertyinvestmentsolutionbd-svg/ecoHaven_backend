@@ -1,0 +1,143 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String    @id @default(uuid())
+  name             String
+  email            String    @unique
+  password         String
+  role             Roles?    @default(employee)
+  contactNo        String
+  profileImg       String?
+  address          String?
+  linkedinUrl      String?   @unique
+  isActive         Boolean   @default(true)
+  twofaEnabled     Boolean   @default(false)
+  twoFactorCode    String?
+  twoFactorExpires DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  menuPermissions UserMenuPermission[]
+
+  @@map("users")
+}
+
+model Menu {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  path        String? // e.g. '/dashboard/projects'
+  icon        String? // optional icon reference
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  permissions UserMenuPermission[]
+}
+
+model UserMenuPermission {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  menuId    Int
+  canView   Boolean  @default(true)
+  canEdit   Boolean  @default(false)
+  canDelete Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+  menu Menu @relation(fields: [menuId], references: [id])
+
+  @@unique([userId, menuId])
+}
+
+model Project {
+  id                 Int           @id @default(autoincrement())
+  name               String
+  mapUrl             String?       @unique
+  location           String?
+  priceRange         String?
+  sizeSqft           Int?
+  landArea           String?
+  status             ProjectStatus
+  description        String?
+  amenities          String[] // TEXT[]
+  projectType        String?
+  progressPercentage Int?          @default(0)
+  completionYear     Int?
+  brochureUrl        String?
+  virtualTourUrl     String?
+  latitude           Float?
+  longitude          Float?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  // Removed createdBy / creator
+  images       ProjectImage[]
+  // inquiries    Inquiry[]
+  galleryItems Gallery[]
+}
+
+model ProjectImage {
+  id         Int     @id @default(autoincrement())
+  imageUrl   String
+  caption    String?
+  isFeatured Boolean @default(false)
+  projectId  Int
+  project    Project @relation(fields: [projectId], references: [id])
+}
+
+model Gallery {
+  id        Int      @id @default(autoincrement())
+  title     String?
+  category  String?
+  imageUrl  String?
+  videoUrl  String?
+  createdAt DateTime @default(now())
+
+  projectId Int?
+  project   Project? @relation(fields: [projectId], references: [id])
+}
+
+model Contact {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(50)
+  email     String   @db.VarChar(50)
+  phone     String?  @db.VarChar(50)
+  message   String   @db.Text // can store richtext HTML safely
+  createdAt DateTime @default(now())
+  read      Boolean  @default(false) // for admin dashboard tracking
+  replied   Boolean  @default(false) // mark if admin responded
+}
+
+model Newsletter {
+  id             Int       @id @default(autoincrement())
+  email          String    @unique @db.VarChar(150)
+  subscribed     Boolean   @default(true) // unsubscribe support
+  createdAt      DateTime  @default(now())
+  unsubscribedAt DateTime?
+}
+
+enum Roles {
+  admin
+  employee
+}
+
+enum ProjectStatus {
+  ongoing
+  completed
+}
