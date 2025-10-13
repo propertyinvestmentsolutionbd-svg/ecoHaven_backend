@@ -4,6 +4,7 @@ import {
   loginUser,
   getRefreshToken,
   verify2FA,
+  updateUserRole,
 } from "./authController";
 
 const router = express.Router();
@@ -12,4 +13,6 @@ router.post("/auth/signup", createUser);
 router.post("/auth/signin", loginUser);
 router.post("/auth/verify-2fa", verify2FA);
 router.post("/auth/refresh-token", getRefreshToken);
+router.put("/update-role/:userId", updateUserRole);
+
 export const authRoutes = router;

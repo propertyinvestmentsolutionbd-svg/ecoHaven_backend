@@ -1,16 +1,3 @@
-// export type ILoginUser = {
-//   email: string;
-//   password: string;
-// };
-// export type ILoginUserResponse = {
-//   token: string;
-//   refreshToken?: string;
-//   twoFa?: boolean;
-// };
-// export type IRefreshTokenResponse = {
-//   accessToken: string;
-// };
-// interfaces/login.ts
 export type ILoginUser = {
   email: string;
   password: string;

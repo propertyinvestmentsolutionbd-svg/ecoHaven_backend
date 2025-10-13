@@ -31,9 +31,20 @@ export const createUserService = async (user: User): Promise<User | null> => {
   );
   user.password = hashedPassword;
 
-  const result = await prisma.user.create({
-    data: user,
+  const result = await prisma.$transaction(async (tx) => {
+    // Create user
+    const newUser = await tx.user.create({
+      data: user,
+    });
+
+    // If user is admin, assign all menu permissions
+    if (newUser.role === "admin") {
+      await assignAllMenuPermissionsToUser(tx, newUser.id);
+    }
+
+    return newUser;
   });
+
   if (!result) {
     throw new APIError(400, "failed to create User");
   }
@@ -233,4 +244,62 @@ export const getRefreshTokenService = async (
   return {
     accessToken: newAccessToken,
   };
+};
+// Helper function to assign all menu permissions to a user
+const assignAllMenuPermissionsToUser = async (
+  prismaClient: any,
+  userId: string
+): Promise<void> => {
+  // Get all menus
+  const allMenus = await prismaClient.menu.findMany();
+
+  if (allMenus.length > 0) {
+    // Create permissions for all menus
+    const permissionData = allMenus.map((menu: any) => ({
+      userId: userId,
+      menuId: menu.id,
+      canView: true,
+      canEdit: true,
+      canDelete: true,
+    }));
+
+    // Bulk create permissions
+    await prismaClient.userMenuPermission.createMany({
+      data: permissionData,
+      skipDuplicates: true, // Skip if permission already exists
+    });
+  }
+};
+
+// Update user role and adjust permissions accordingly
+export const updateUserRoleService = async (
+  userId: string,
+  newRole: string
+): Promise<any> => {
+  const validRoles = ["admin", "employee"];
+
+  if (!validRoles.includes(newRole)) {
+    throw new APIError(400, "Invalid role. Must be 'admin' or 'employee'");
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    // Update user role
+    const updatedUser = await tx.user.update({
+      where: { id: userId },
+      data: { role: newRole },
+      select: { id: true, name: true, email: true, role: true },
+    });
+
+    // If changing to admin, assign all permissions
+    if (newRole === "admin") {
+      await assignAllMenuPermissionsToUser(tx, userId);
+    }
+    // If changing from admin to employee, you might want to remove all permissions
+    // or keep existing ones - depending on your business logic
+    // For now, we'll keep the existing permissions
+
+    return updatedUser;
+  });
+
+  return result;
 };

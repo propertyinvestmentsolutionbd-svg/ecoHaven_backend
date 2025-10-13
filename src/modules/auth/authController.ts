@@ -4,6 +4,7 @@ import {
   loginUserService,
   getRefreshTokenService,
   verify2FAService,
+  updateUserRoleService,
 } from "./authService";
 import catchAsync from "../../shared/catchAsync";
 import { reponseAuthFormat, reponseFormat } from "../../shared/responseFormat";
@@ -12,11 +13,9 @@ import {
   IRefreshTokenResponse,
 } from "../../interfaces/login";
 import { User } from "../../../generated/prisma";
-// import { User } from "@prisma/client";
-// signup
+
 export const createUser: RequestHandler = catchAsync(
   async (req: Request, res: Response) => {
-    console.log(req.body);
     const { ...userData } = req.body;
 
     const result = await createUserService(userData);
@@ -110,6 +109,21 @@ export const getRefreshToken = catchAsync(
       statusCode: 200,
       success: true,
       message: "New access token generated successfully !",
+      data: result,
+    });
+  }
+);
+export const updateUserRole = catchAsync(
+  async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const { role } = req.body;
+
+    const result = await updateUserRoleService(userId, role);
+
+    reponseFormat(res, {
+      success: true,
+      statusCode: 200,
+      message: "User role updated successfully",
       data: result,
     });
   }
