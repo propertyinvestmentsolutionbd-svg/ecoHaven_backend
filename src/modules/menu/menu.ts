@@ -61,3 +61,57 @@ export interface IUserWithPermissions {
     canDelete: boolean;
   }[];
 }
+
+// interfaces/userMenuPermission.ts
+export interface IUserMenuWithPermissions {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userRole: string;
+  assignedPermissions: {
+    permissionId: number;
+    menuId: number;
+    menuName: string;
+    menuPath?: string;
+    menuIcon?: string;
+    menuDescription?: string;
+    canView: boolean;
+    canEdit: boolean;
+    canDelete: boolean;
+  }[];
+  availableMenus: {
+    menuId: number;
+    menuName: string;
+    menuPath?: string;
+    menuIcon?: string;
+    menuDescription?: string;
+    isAssigned: boolean;
+  }[];
+}
+// interfaces/userMenuPermission.ts
+export interface IUserPermissionUpsert {
+  userId: string;
+  permissions: {
+    menuId: number;
+    canView: boolean;
+    canEdit: boolean;
+    canDelete: boolean;
+  }[];
+}
+
+export interface IUpsertPermissionsResponse {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  totalPermissions: number;
+  created: number;
+  updated: number;
+  permissions: {
+    menuId: number;
+    menuName: string;
+    canView: boolean;
+    canEdit: boolean;
+    canDelete: boolean;
+    action: "created" | "updated" | "unchanged";
+  }[];
+}
