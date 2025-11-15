@@ -111,6 +111,7 @@ export const loginUser = catchAsync(async (req: Request, res: Response) => {
     message: "User signin successfully!",
     token: others.token,
     twoFa: false,
+    menus: result?.menus || [],
   });
 });
 export const verify2FA = catchAsync(async (req: Request, res: Response) => {
@@ -125,7 +126,7 @@ export const verify2FA = catchAsync(async (req: Request, res: Response) => {
   };
 
   res.cookie("refreshToken", refreshToken, cookieOptions);
-
+  console.log({ others });
   reponseAuthFormat(res, {
     success: true,
     statusCode: 200,
@@ -133,6 +134,7 @@ export const verify2FA = catchAsync(async (req: Request, res: Response) => {
     token: others.token,
     // user: others.user,
     twoFa: false,
+    menus: others?.menus || [],
   });
 });
 

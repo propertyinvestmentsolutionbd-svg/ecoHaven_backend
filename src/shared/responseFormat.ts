@@ -21,6 +21,7 @@ type IAuthData<T> = {
   token?: T | null;
   twoFa?: boolean;
   tempToken?: T | null;
+  menus?: T[] | null;
 };
 export const reponseFormat = <T>(res: Response, data: IApiData<T>): void => {
   const responseData: IApiData<T> = {
@@ -44,6 +45,7 @@ export const reponseAuthFormat = <T>(
     token: data.token || null,
     twoFa: data.twoFa || false,
     tempToken: data.tempToken || null,
+    menus: data?.menus || null,
   };
 
   res.status(data.statusCode).json(responseData);

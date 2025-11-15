@@ -26,6 +26,7 @@ export type ILoginUserResponse = {
   twoFaCode?: string; // For initial response
   tempToken?: string; // For 2FA verification
   message?: string;
+  menus?: any[];
 };
 
 export type IRefreshTokenResponse = {
@@ -41,4 +42,5 @@ export type IVerify2FAResponse = {
   token: string;
   refreshToken: string;
   user: any;
+  menus?: any[];
 };

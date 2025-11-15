@@ -26,6 +26,7 @@ import {
 } from "./emailService";
 import path from "path";
 import fs from "fs";
+import { getUserPermissionsService } from "../menu/menuPermissionService";
 
 // creating user
 // export const createUserService = async (user: User): Promise<User | null> => {
@@ -175,9 +176,7 @@ export const loginUserService = async (
   payload: ILoginUser
 ): Promise<ILoginUserResponse> => {
   const { email, password } = payload;
-  console.log({ email });
   const isUserExist = await getByEmailFromDB(email);
-  console.log({ isUserExist });
 
   if (!isUserExist) {
     throw new APIError(404, "User does not exist");
@@ -222,13 +221,13 @@ export const loginUserService = async (
   }
 
   // If 2FA is disabled, proceed with normal login
-  const { id: userId, role } = isUserExist;
+  const { id: userId, role, name } = isUserExist;
   const token = createToken(
-    { userId, role, email },
+    { userId, role, email, name },
     config.jwt.secret as Secret,
     config.jwt.expires_in as string
   );
-
+  const menus = await getUserPermissionsService(userId);
   const refreshToken = createToken(
     { userId, role, email },
     config.jwt.refresh_secret as Secret,
@@ -239,6 +238,7 @@ export const loginUserService = async (
     token,
     refreshToken,
     twoFa: false,
+    menus,
   };
 };
 
@@ -294,7 +294,7 @@ export const verify2FAService = async (
 
   // Generate final tokens
   const token = createToken(
-    { userId: user.id, role: user.role, email: user.email },
+    { userId: user.id, role: user.role, email: user.email, name: user.name },
     config.jwt.secret as Secret,
     config.jwt.expires_in as string
   );
@@ -304,11 +304,13 @@ export const verify2FAService = async (
     config.jwt.refresh_secret as Secret,
     config.jwt.refresh_expires_in as string
   );
+  const menus = await getUserPermissionsService(user.id);
 
   return {
     token,
     refreshToken,
     user,
+    menus,
   };
 };
 // getrefresh
