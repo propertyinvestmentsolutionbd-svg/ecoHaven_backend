@@ -7,6 +7,7 @@ import {
   ILoginUser,
   ILoginUserResponse,
   IRefreshTokenResponse,
+  IUserCreate,
   IVerify2FA,
   IVerify2FAResponse,
 } from "../../interfaces/login";
@@ -23,18 +24,62 @@ import {
   verify2FACode,
   clear2FACode,
 } from "./emailService";
+import path from "path";
+import fs from "fs";
+
 // creating user
-export const createUserService = async (user: User): Promise<User | null> => {
+// export const createUserService = async (user: User): Promise<User | null> => {
+//   const hashedPassword = await bcrypt.hash(
+//     user?.password,
+//     Number(config.bycrypt_salt_rounds)
+//   );
+//   user.password = hashedPassword;
+
+//   const result = await prisma.$transaction(async (tx) => {
+//     // Create user
+//     const newUser = await tx.user.create({
+//       data: user,
+//     });
+
+//     // If user is admin, assign all menu permissions
+//     if (newUser.role === "admin") {
+//       await assignAllMenuPermissionsToUser(tx, newUser.id);
+//     }
+
+//     return newUser;
+//   });
+
+//   if (!result) {
+//     throw new APIError(400, "failed to create User");
+//   }
+//   return result;
+// };
+export const createUserService = async (
+  userData: IUserCreate,
+  profileImage?: Express.Multer.File
+): Promise<any> => {
   const hashedPassword = await bcrypt.hash(
-    user?.password,
+    userData.password,
     Number(config.bycrypt_salt_rounds)
   );
-  user.password = hashedPassword;
 
   const result = await prisma.$transaction(async (tx) => {
+    let profileImgUrl = userData.profileImg; // Use provided URL if any
+
+    // If profile image file was uploaded, generate URL
+    if (profileImage) {
+      profileImgUrl = `/uploads/profiles/${path.basename(
+        profileImage.filename
+      )}`;
+    }
+
     // Create user
     const newUser = await tx.user.create({
-      data: user,
+      data: {
+        ...userData,
+        password: hashedPassword,
+        profileImg: profileImgUrl,
+      },
     });
 
     // If user is admin, assign all menu permissions
@@ -46,10 +91,67 @@ export const createUserService = async (user: User): Promise<User | null> => {
   });
 
   if (!result) {
-    throw new APIError(400, "failed to create User");
+    // Clean up uploaded file if user creation failed
+    if (profileImage) {
+      deleteImageFile(profileImage.path);
+    }
+    throw new APIError(400, "Failed to create user");
   }
+
   return result;
 };
+// Update user profile image
+export const updateUserProfileImageService = async (
+  userId: string,
+  profileImage: Express.Multer.File
+): Promise<any> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    // Clean up uploaded file if user doesn't exist
+    deleteImageFile(profileImage.path);
+    throw new APIError(404, "User not found");
+  }
+
+  const profileImgUrl = `/uploads/profiles/${path.basename(
+    profileImage.filename
+  )}`;
+
+  // Delete old profile image if exists
+  if (user.profileImg) {
+    await deleteImageFile(user.profileImg);
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { profileImg: profileImgUrl },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      profileImg: true,
+      role: true,
+      contactNo: true,
+    },
+  });
+
+  return updatedUser;
+};
+
+// Helper function to delete image file
+const deleteImageFile = async (imagePath: string): Promise<void> => {
+  try {
+    if (fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+    }
+  } catch (error) {
+    console.error("Error deleting image file:", error);
+    // Don't throw error, just log it
+  }
+};
+
 // getByemail
 const getByEmailFromDB = async (email: string): Promise<User | null> => {
   const result = await prisma.user.findUnique({
@@ -73,8 +175,9 @@ export const loginUserService = async (
   payload: ILoginUser
 ): Promise<ILoginUserResponse> => {
   const { email, password } = payload;
-
+  console.log({ email });
   const isUserExist = await getByEmailFromDB(email);
+  console.log({ isUserExist });
 
   if (!isUserExist) {
     throw new APIError(404, "User does not exist");
@@ -302,4 +405,392 @@ export const updateUserRoleService = async (
   });
 
   return result;
+};
+
+// Get user by ID
+export const getUserByIdService = async (userId: string): Promise<any> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      contactNo: true,
+      profileImg: true,
+      address: true,
+      linkedinUrl: true,
+      isFeatured: true,
+      profileDescription: true,
+      isAgent: true,
+      agentDescription: true,
+      twofaEnabled: true,
+      isActive: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  if (!user) {
+    throw new APIError(404, "User not found");
+  }
+
+  return user;
+};
+// Update user with profile image
+export const updateUserWithProfileImageService = async (
+  userId: string,
+  payload: any
+): Promise<any> => {
+  const { userData, profileImage } = payload;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    if (profileImage) {
+      deleteImageFile(profileImage.path);
+    }
+    throw new APIError(404, "User not found");
+  }
+
+  // Check email uniqueness if being updated
+  if (userData.email && userData.email !== user.email) {
+    const existingUser = await prisma.user.findUnique({
+      where: { email: userData.email },
+    });
+
+    if (existingUser) {
+      if (profileImage) {
+        deleteImageFile(profileImage.path);
+      }
+      throw new APIError(409, "Email already exists");
+    }
+  }
+
+  // Check LinkedIn URL uniqueness if being updated
+  if (userData.linkedinUrl && userData.linkedinUrl !== user.linkedinUrl) {
+    const existingUser = await prisma.user.findUnique({
+      where: { linkedinUrl: userData.linkedinUrl },
+    });
+
+    if (existingUser) {
+      if (profileImage) {
+        deleteImageFile(profileImage.path);
+      }
+      throw new APIError(409, "LinkedIn URL already exists");
+    }
+  }
+
+  let profileImgUrl = userData.profileImg;
+
+  // If new profile image was uploaded
+  if (profileImage) {
+    profileImgUrl = `/uploads/profiles/${path.basename(profileImage.filename)}`;
+
+    // Delete old profile image if exists
+    if (user.profileImg) {
+      await deleteImageFile(user.profileImg);
+    }
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...userData,
+      profileImg: profileImgUrl,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      contactNo: true,
+      profileImg: true,
+      address: true,
+      linkedinUrl: true,
+      isFeatured: true,
+      profileDescription: true,
+      isAgent: true,
+      agentDescription: true,
+      twofaEnabled: true,
+      isActive: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  return updatedUser;
+};
+// Change password
+export const changePasswordService = async (
+  userId: string,
+  payload: any
+): Promise<any> => {
+  const { currentPassword, newPassword, confirmPassword } = payload;
+
+  if (newPassword !== confirmPassword) {
+    throw new APIError(400, "New password and confirm password do not match");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new APIError(404, "User not found");
+  }
+
+  // Verify current password
+  const isCurrentPasswordValid = await bcrypt.compare(
+    currentPassword,
+    user.password
+  );
+
+  if (!isCurrentPasswordValid) {
+    throw new APIError(401, "Current password is incorrect");
+  }
+
+  // Hash new password
+  const hashedNewPassword = await bcrypt.hash(
+    newPassword,
+    Number(config.bycrypt_salt_rounds)
+  );
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { password: hashedNewPassword },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      updatedAt: true,
+    },
+  });
+
+  return {
+    ...updatedUser,
+    message: "Password changed successfully",
+  };
+};
+
+// Toggle user active status
+export const toggleUserStatusService = async (userId: string): Promise<any> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new APIError(404, "User not found");
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { isActive: !user.isActive },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      isActive: true,
+      updatedAt: true,
+    },
+  });
+
+  return {
+    ...updatedUser,
+    message: `User ${
+      updatedUser.isActive ? "activated" : "deactivated"
+    } successfully`,
+  };
+};
+// Delete user
+export const deleteUserService = async (userId: string): Promise<any> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      menuPermissions: true,
+    },
+  });
+
+  if (!user) {
+    throw new APIError(404, "User not found");
+  }
+
+  // Delete profile image if exists
+  if (user.profileImg) {
+    await deleteImageFile(user.profileImg);
+  }
+
+  // Use transaction to ensure all operations succeed or fail together
+  const result = await prisma.$transaction(async (tx) => {
+    // Delete user permissions
+    if (user.menuPermissions.length > 0) {
+      await tx.userMenuPermission.deleteMany({
+        where: { userId },
+      });
+    }
+
+    // Delete user
+    const deletedUser = await tx.user.delete({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
+
+    return deletedUser;
+  });
+
+  return {
+    ...result,
+    message: "User deleted successfully",
+  };
+};
+// Add this to services/userService.ts
+export const getAllUsersService = async (filters: {
+  page: number;
+  limit: number;
+  search?: string;
+  role?: string;
+  isActive?: boolean;
+}): Promise<{
+  users: any[];
+  total: number;
+  page: number;
+  totalPages: number;
+}> => {
+  const { page, limit, search, role, isActive } = filters;
+  const skip = (page - 1) * limit;
+
+  // Build where clause
+  const where: any = {};
+
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { email: { contains: search, mode: "insensitive" } },
+      { contactNo: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  if (role) {
+    where.role = role;
+  }
+
+  if (isActive !== undefined) {
+    where.isActive = isActive;
+  }
+
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        contactNo: true,
+        profileImg: true,
+        address: true,
+        linkedinUrl: true,
+        isFeatured: true,
+        profileDescription: true,
+        isAgent: true,
+        agentDescription: true,
+        twofaEnabled: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      skip,
+      take: limit,
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    users,
+    total,
+    page,
+    totalPages,
+  };
+};
+// Simple forgot password service
+export const forgotPasswordService = async (
+  payload: any
+): Promise<{ message: string }> => {
+  const { email, newPassword, confirmPassword } = payload;
+
+  // // Validate passwords match
+  // if (newPassword !== confirmPassword) {
+  //   throw new APIError(400, "Passwords do not match");
+  // }
+
+  // Validate password strength
+  if (newPassword.length < 6) {
+    throw new APIError(400, "Password must be at least 6 characters long");
+  }
+
+  // Find user by email
+  const user = await prisma.user.findUnique({
+    where: {
+      email: email.toLowerCase().trim(),
+      isActive: true,
+    },
+  });
+
+  if (!user) {
+    throw new APIError(404, "User with this email not found");
+  }
+
+  // Hash new password
+  const hashedPassword = await bcrypt.hash(
+    newPassword,
+    Number(config.bycrypt_salt_rounds)
+  );
+
+  // Update password
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password: hashedPassword,
+    },
+  });
+
+  return {
+    message: "Password has been reset successfully",
+  };
+};
+
+// Verify email exists (optional - for frontend validation)
+export const verifyEmailService = async (
+  email: string
+): Promise<{ exists: boolean; message: string }> => {
+  const user = await prisma.user.findUnique({
+    where: {
+      email: email.toLowerCase().trim(),
+      isActive: true,
+    },
+    select: { id: true, name: true }, // Only return necessary fields
+  });
+
+  if (!user) {
+    return {
+      exists: false,
+      message: "User with this email not found",
+    };
+  }
+
+  return {
+    exists: true,
+    message: "Email verified successfully",
+  };
 };

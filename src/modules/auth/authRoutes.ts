@@ -5,14 +5,41 @@ import {
   getRefreshToken,
   verify2FA,
   updateUserRole,
+  updateProfileImage,
+  getAllUsers,
+  getUserById,
+  updateUserWithImage,
+  changePassword,
+  deleteUser,
+  toggleUserStatus,
+  verifyEmail,
+  forgotPassword,
 } from "./authController";
+import { uploadProfileImage } from "../../config/multer";
 
 const router = express.Router();
+router.get("/", getAllUsers);
 
-router.post("/auth/signup", createUser);
+// Get user by ID
+router.get("/:id", getUserById);
+router.put("/:id/with-image", uploadProfileImage, updateUserWithImage);
+router.patch("/:id/change-password", changePassword);
+router.delete("/:id", deleteUser);
+router.patch("/:id/toggle-status", toggleUserStatus);
+// Forgot password routes
+router.post("/forgot-password", forgotPassword);
+router.post("/verify-email", verifyEmail);
+// router.post("/auth/signup", createUser);
+router.post("/auth/signup", uploadProfileImage, createUser);
+
 router.post("/auth/signin", loginUser);
 router.post("/auth/verify-2fa", verify2FA);
 router.post("/auth/refresh-token", getRefreshToken);
 router.put("/update-role/:userId", updateUserRole);
+// router.patch(
+//   "/users/:userId/profile-image",
+//   uploadProfileImage,
+//   updateProfileImage
+// );
 
 export const authRoutes = router;

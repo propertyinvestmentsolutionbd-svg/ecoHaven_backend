@@ -1,3 +1,19 @@
+// interfaces/user.ts
+export interface IUserCreate {
+  name: string;
+  email: string;
+  password: string;
+  contactNo: string;
+  role?: "admin" | "employee";
+  profileImg?: string;
+  address?: string;
+  linkedinUrl?: string;
+  isFeatured?: boolean;
+  profileDescription?: string;
+  isAgent?: boolean;
+  agentDescription?: string;
+  twofaEnabled?: boolean;
+}
 export type ILoginUser = {
   email: string;
   password: string;

@@ -83,3 +83,25 @@ export const uploadAllMedia = galleryMediaUpload.fields([
   { name: "projectImages", maxCount: 10 },
   { name: "galleryMedia", maxCount: 10 },
 ]);
+// config/multer.ts - Add this to your existing file
+
+// Configure storage for profile images
+const profileStorage = multer.diskStorage({
+  destination: (req: Request, file: Express.Multer.File, cb) => {
+    cb(null, "uploads/profiles/");
+  },
+  filename: (req: Request, file: Express.Multer.File, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const fileExtension = path.extname(file.originalname);
+    cb(null, "profile-" + uniqueSuffix + fileExtension);
+  },
+});
+
+// Add to your existing exports
+export const uploadProfileImage = multer({
+  storage: profileStorage,
+  fileFilter: imageFileFilter, // Reuse the existing image filter
+  limits: {
+    fileSize: 2 * 1024 * 1024, // 2MB limit for profile images
+  },
+}).single("profileImg"); // Single file with field name "profileImg"

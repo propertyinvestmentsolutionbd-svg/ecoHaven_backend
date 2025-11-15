@@ -15,21 +15,25 @@ datasource db {
 }
 
 model User {
-  id               String    @id @default(uuid())
-  name             String
-  email            String    @unique
-  password         String
-  role             Roles?    @default(employee)
-  contactNo        String
-  profileImg       String?
-  address          String?
-  linkedinUrl      String?   @unique
-  isActive         Boolean   @default(true)
-  twofaEnabled     Boolean   @default(false)
-  twoFactorCode    String?
-  twoFactorExpires DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                 String    @id @default(uuid())
+  name               String
+  email              String    @unique
+  password           String
+  role               Roles?    @default(employee)
+  contactNo          String
+  profileImg         String?
+  address            String?
+  linkedinUrl        String?   @unique
+  isActive           Boolean   @default(true)
+  isFeatured         Boolean   @default(false)
+  profileDescription String?
+  isAgent            Boolean   @default(false)
+  agentDescription   String?
+  twofaEnabled       Boolean   @default(false)
+  twoFactorCode      String?
+  twoFactorExpires   DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   menuPermissions UserMenuPermission[]
 
@@ -94,7 +98,7 @@ model Project {
 
 model ProjectImage {
   id         Int     @id @default(autoincrement())
-  imageUrl   String
+  imageUrl   String?
   caption    String?
   isFeatured Boolean @default(false)
   projectId  Int
