@@ -8,6 +8,7 @@ import { menuRoutes } from "./modules/menu/menuRoutes";
 import { permissionRoutes } from "./modules/menu/permissionRoutes";
 import { contactRoutes } from "./modules/contact/contactRoutes";
 import { projectRoutes } from "./modules/projects/projectRoutes";
+import path from "path";
 
 const app: Application = express();
 
@@ -52,6 +53,8 @@ app.use((req, res, next) => {
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
 app.use("/api/v1", authRoutes);
 app.use("/api/v1", menuRoutes);
 app.use("/api/v1", permissionRoutes);

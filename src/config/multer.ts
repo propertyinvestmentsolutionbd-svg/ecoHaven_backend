@@ -105,3 +105,32 @@ export const uploadProfileImage = multer({
     fileSize: 2 * 1024 * 1024, // 2MB limit for profile images
   },
 }).single("profileImg"); // Single file with field name "profileImg"
+// Create a debug version of the upload middleware
+export const debugUploadProfileImage = (req: any, res: any, next: any) => {
+  console.log("=== BEFORE MULTER ===");
+  console.log("Request headers:", req.headers);
+  console.log("Request body keys (before multer):", req.body, { res });
+
+  multer({
+    storage: profileStorage,
+    fileFilter: imageFileFilter,
+    limits: {
+      fileSize: 2 * 1024 * 1024,
+    },
+  }).single("profileImg")(req, res, (err) => {
+    if (err) {
+      console.log("Multer error:", err);
+      return res.status(400).json({
+        success: false,
+        message: `File upload error: ${err.message}`,
+      });
+    }
+
+    console.log("=== AFTER MULTER ===");
+    console.log("Uploaded file:", req.file);
+    console.log("Request body keys (after multer):", Object.keys(req.body));
+    console.log("userData in body:", req.body.userData);
+
+    next();
+  });
+};

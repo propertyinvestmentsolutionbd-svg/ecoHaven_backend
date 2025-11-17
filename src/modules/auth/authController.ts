@@ -48,33 +48,74 @@ export const createUser: RequestHandler = catchAsync(
     let userData;
     let profileImage;
 
+    console.log("=== CREATE USER CONTROLLER ===");
+    console.log("Request body:", req.body);
+    console.log("Request file:", req.file);
+
     // Check if request has files (multipart/form-data)
     if (req.file) {
-      // Request has file upload - parse form data
-      userData = JSON.parse(req.body.userData || "{}");
+      // Multer has already parsed all fields into req.body
+      // Use the individual fields directly instead of parsing userData
+      userData = {
+        name: req.body.name,
+        email: req.body.email,
+        contactNo: req.body.contactNo,
+        role: req.body.role || "employee",
+        designation: req.body.designation || "",
+        address: req.body.address || "",
+        linkedinUrl: req.body.linkedinUrl || "",
+        profileDescription: req.body.profileDescription || "",
+        agentDescription: req.body.agentDescription || "",
+        isFeatured:
+          req.body.isFeatured === "true" || req.body.isFeatured === true,
+        isAgent: req.body.isAgent === "true" || req.body.isAgent === true,
+        isActive: true,
+        twofaEnabled: true,
+        password: req.body.password,
+      };
+
       profileImage = req.file;
+
+      console.log("Constructed userData from form fields:", userData);
     } else {
       // Request is JSON only
       userData = req.body;
       profileImage = undefined;
     }
 
-    const result = await createUserService(userData, profileImage);
+    console.log("Final userData:", userData);
+    console.log("Final profileImage:", profileImage);
 
-    let dataWithoutPass;
-    if (result) {
-      const { password, ...rest } = result;
-      dataWithoutPass = rest;
+    // Validate that userData exists and has password
+    if (!userData || !userData.password) {
+      console.log("Missing userData or password");
+      return res.status(400).json({
+        success: false,
+        message: "User data and password are required",
+      });
     }
 
-    reponseFormat(res, {
-      success: true,
-      statusCode: 200,
-      message: profileImage
-        ? "User created with profile image successfully!"
-        : "User created successfully!",
-      data: dataWithoutPass,
-    });
+    try {
+      const result = await createUserService(userData, profileImage);
+
+      let dataWithoutPass;
+      if (result) {
+        const { password, ...rest } = result;
+        dataWithoutPass = rest;
+      }
+
+      reponseFormat(res, {
+        success: true,
+        statusCode: 200,
+        message: profileImage
+          ? "User created with profile image successfully!"
+          : "User created successfully!",
+        data: dataWithoutPass,
+      });
+    } catch (error) {
+      console.error("Error in createUserService:", error);
+      throw error;
+    }
   }
 );
 // login

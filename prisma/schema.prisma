@@ -23,6 +23,8 @@ model User {
   contactNo          String
   profileImg         String?
   address            String?
+  country            String?   @default("")
+  designation        String?   @default("")
   linkedinUrl        String?   @unique
   isActive           Boolean   @default(true)
   isFeatured         Boolean   @default(false)

@@ -59,47 +59,87 @@ export const createUserService = async (
   userData: IUserCreate,
   profileImage?: Express.Multer.File
 ): Promise<any> => {
-  const hashedPassword = await bcrypt.hash(
-    userData.password,
-    Number(config.bycrypt_salt_rounds)
-  );
+  console.log("=== SERVICE START ===");
+  console.log("userData received in service:", userData);
+  console.log("userData type:", typeof userData);
 
-  const result = await prisma.$transaction(async (tx) => {
-    let profileImgUrl = userData.profileImg; // Use provided URL if any
+  // Validate input more carefully
+  if (!userData || typeof userData !== "object") {
+    console.log("ERROR: Invalid userData in service:", userData);
+    throw new APIError(400, "Valid user data is required");
+  }
 
-    // If profile image file was uploaded, generate URL
-    if (profileImage) {
-      profileImgUrl = `/uploads/profiles/${path.basename(
-        profileImage.filename
-      )}`;
-    }
+  if (!userData.password) {
+    console.log("ERROR: Password missing in userData");
+    throw new APIError(400, "Password is required");
+  }
 
-    // Create user
-    const newUser = await tx.user.create({
-      data: {
-        ...userData,
-        password: hashedPassword,
-        profileImg: profileImgUrl,
-      },
+  try {
+    const hashedPassword = await bcrypt.hash(
+      userData.password,
+      Number(config.bycrypt_salt_rounds)
+    );
+
+    console.log("Creating modification object...");
+
+    // Create modification object safely
+    const modification = {
+      name: userData.name,
+      email: userData.email,
+      contactNo: userData.contactNo,
+      role: userData.role || "employee",
+      designation: userData.designation || "",
+      address: userData.address || "",
+      linkedinUrl: userData.linkedinUrl || "",
+      profileDescription: userData.profileDescription || "",
+      agentDescription: userData.agentDescription || "",
+      isFeatured:
+        userData.isFeatured === "true" || userData.isFeatured === true,
+      isAgent: userData.isAgent === "true" || userData.isAgent === true,
+      twofaEnabled:
+        userData.twofaEnabled === "true" || userData.twofaEnabled === true,
+    };
+
+    console.log("Modification object:", modification);
+
+    const result = await prisma.$transaction(async (tx) => {
+      let profileImgUrl = null;
+
+      // If profile image file was uploaded, generate URL
+      if (profileImage) {
+        profileImgUrl = `/uploads/profiles/${path.basename(
+          profileImage.filename
+        )}`;
+        console.log("Profile image URL:", profileImgUrl);
+      }
+
+      // Create user
+      const newUser = await tx.user.create({
+        data: {
+          ...modification,
+          password: hashedPassword,
+          profileImg: profileImgUrl,
+        },
+      });
+
+      // If user is admin, assign all menu permissions
+      if (newUser.role === "admin") {
+        await assignAllMenuPermissionsToUser(tx, newUser.id);
+      }
+
+      return newUser;
     });
 
-    // If user is admin, assign all menu permissions
-    if (newUser.role === "admin") {
-      await assignAllMenuPermissionsToUser(tx, newUser.id);
-    }
-
-    return newUser;
-  });
-
-  if (!result) {
+    console.log("=== SERVICE END - SUCCESS ===");
+    return result;
+  } catch (error) {
+    console.log("=== SERVICE END - ERROR ===", error);
     // Clean up uploaded file if user creation failed
     if (profileImage) {
       deleteImageFile(profileImage.path);
     }
     throw new APIError(400, "Failed to create user");
   }
-
-  return result;
 };
 // Update user profile image
 export const updateUserProfileImageService = async (

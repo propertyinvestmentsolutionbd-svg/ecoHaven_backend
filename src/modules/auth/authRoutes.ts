@@ -21,7 +21,7 @@ const router = express.Router();
 router.get("/", getAllUsers);
 
 // Get user by ID
-router.get("/:id", getUserById);
+router.get("/profile/:id", getUserById);
 router.put("/:id/with-image", uploadProfileImage, updateUserWithImage);
 router.patch("/:id/change-password", changePassword);
 router.delete("/:id", deleteUser);
