@@ -15,6 +15,7 @@ import {
   getAllUsersService,
   verifyEmailService,
   forgotPasswordService,
+  deleteImageFile,
 } from "./authService";
 import catchAsync from "../../shared/catchAsync";
 import { reponseAuthFormat, reponseFormat } from "../../shared/responseFormat";
@@ -23,6 +24,7 @@ import {
   IRefreshTokenResponse,
 } from "../../interfaces/login";
 import { User } from "../../../generated/prisma";
+import APIError from "../../errorHelpers/APIError";
 
 // export const createUser: RequestHandler = catchAsync(
 //   async (req: Request, res: Response) => {
@@ -255,24 +257,76 @@ export const getUserById: RequestHandler = catchAsync(
     });
   }
 );
-// Update user with profile image
+// Update user with or without profile image
+// Update user with or without profile image
 export const updateUserWithImage: RequestHandler = catchAsync(
   async (req: Request, res: Response) => {
     const { id } = req.params;
-    const userData = JSON.parse(req.body.userData || "{}");
-    const profileImage = req.file;
 
-    const result = await updateUserWithProfileImageService(id, {
-      userData,
-      profileImage,
-    });
+    let userData;
+    let profileImage;
 
-    reponseFormat(res, {
-      success: true,
-      statusCode: 200,
-      message: "User updated with profile image successfully!",
-      data: result,
-    });
+    try {
+      // Check if request has file upload (multipart/form-data)
+      if (req.file) {
+        // Extract userData from form data - it's in req.body.userData
+        console.log("Raw req.body:", req.body);
+        userData = req.body.userData; // This is the JSON string
+        profileImage = req.file;
+      } else {
+        // Request is JSON only - userData is the entire body
+        userData = req.body;
+        profileImage = undefined;
+      }
+
+      // Validate user ID
+      if (!id) {
+        return reponseFormat(res, {
+          success: false,
+          statusCode: 400,
+          message: "User ID is required",
+        });
+      }
+
+      console.log("Sending to service - userData:", userData);
+      console.log("Sending to service - profileImage:", profileImage);
+
+      // Send the extracted userData directly, not nested
+      const result = await updateUserWithProfileImageService(id, {
+        userData: userData, // This should be the JSON string directly
+        profileImage,
+      });
+
+      reponseFormat(res, {
+        success: true,
+        statusCode: 200,
+        message: profileImage
+          ? "User updated with profile image successfully!"
+          : "User updated successfully!",
+        data: result,
+      });
+    } catch (error) {
+      console.error("Error in updateUserWithImage:", error);
+
+      // Clean up uploaded file if error occurred
+      if (profileImage) {
+        deleteImageFile(profileImage.path);
+      }
+
+      if (error instanceof APIError) {
+        return reponseFormat(res, {
+          success: false,
+          statusCode: error.statusCode,
+          message: error.message,
+        });
+      }
+
+      reponseFormat(res, {
+        success: false,
+        statusCode: 500,
+        message: "Internal server error",
+      });
+    }
   }
 );
 // Change password

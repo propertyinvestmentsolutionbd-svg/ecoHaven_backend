@@ -182,7 +182,7 @@ export const updateUserProfileImageService = async (
 };
 
 // Helper function to delete image file
-const deleteImageFile = async (imagePath: string): Promise<void> => {
+export const deleteImageFile = async (imagePath: string): Promise<void> => {
   try {
     if (fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);
@@ -479,13 +479,23 @@ export const getUserByIdService = async (userId: string): Promise<any> => {
 
   return user;
 };
-// Update user with profile image
+// Update user with or without profile image
 export const updateUserWithProfileImageService = async (
   userId: string,
   payload: any
 ): Promise<any> => {
   const { userData, profileImage } = payload;
 
+  console.log("Service received payload:", payload);
+  console.log("Service received userData:", userData);
+  console.log("Service received profileImage:", profileImage);
+
+  // Validate input
+  if (!userId) {
+    throw new APIError(400, "User ID is required");
+  }
+
+  // Find existing user
   const user = await prisma.user.findUnique({
     where: { id: userId },
   });
@@ -497,73 +507,151 @@ export const updateUserWithProfileImageService = async (
     throw new APIError(404, "User not found");
   }
 
-  // Check email uniqueness if being updated
-  if (userData.email && userData.email !== user.email) {
-    const existingUser = await prisma.user.findUnique({
-      where: { email: userData.email },
+  try {
+    // Extract and parse userData
+    let parsedUserData;
+
+    if (typeof userData === "string") {
+      // Direct JSON string
+      try {
+        parsedUserData = JSON.parse(userData);
+      } catch (parseError) {
+        throw new APIError(400, "Invalid userData JSON format");
+      }
+    } else if (userData && typeof userData === "object" && userData.userData) {
+      // Nested object with userData property (your current case)
+      try {
+        parsedUserData = JSON.parse(userData.userData);
+      } catch (parseError) {
+        throw new APIError(400, "Invalid nested userData JSON format");
+      }
+    } else if (userData && typeof userData === "object") {
+      // Already parsed object
+      parsedUserData = userData;
+    } else {
+      throw new APIError(400, "Valid user data is required");
+    }
+
+    console.log("Parsed userData:", parsedUserData);
+
+    // Check email uniqueness if being updated
+    if (parsedUserData.email && parsedUserData.email !== user.email) {
+      const existingUser = await prisma.user.findUnique({
+        where: { email: parsedUserData.email },
+      });
+
+      if (existingUser) {
+        throw new APIError(409, "Email already exists");
+      }
+    }
+
+    // Check LinkedIn URL uniqueness if being updated
+    if (
+      parsedUserData.linkedinUrl &&
+      parsedUserData.linkedinUrl !== user.linkedinUrl
+    ) {
+      const existingUser = await prisma.user.findUnique({
+        where: { linkedinUrl: parsedUserData.linkedinUrl },
+      });
+
+      if (existingUser) {
+        throw new APIError(409, "LinkedIn URL already exists");
+      }
+    }
+
+    let profileImgUrl = user.profileImg; // Keep existing image by default
+
+    // If new profile image was uploaded
+    if (profileImage) {
+      profileImgUrl = `/uploads/profiles/${path.basename(
+        profileImage.filename
+      )}`;
+
+      // Delete old profile image if exists and is different from new one
+      if (user.profileImg && user.profileImg !== profileImgUrl) {
+        try {
+          await deleteImageFile(user.profileImg);
+        } catch (deleteError) {
+          console.warn("Failed to delete old profile image:", deleteError);
+          // Continue with update even if old image deletion fails
+        }
+      }
+    } else if (parsedUserData.removeProfileImage) {
+      // If explicitly removing profile image
+      if (user.profileImg) {
+        try {
+          await deleteImageFile(user.profileImg);
+        } catch (deleteError) {
+          console.warn("Failed to delete profile image:", deleteError);
+        }
+      }
+      profileImgUrl = null;
+    }
+
+    // Prepare update data - spread the parsed userData into individual fields
+    const updateData: any = {
+      ...parsedUserData,
+      updatedAt: new Date(), // Always update the timestamp
+    };
+
+    // Remove fields that shouldn't be updated directly
+    delete updateData.id;
+    delete updateData.password; // Password should be updated separately
+    delete updateData.removeProfileImage; // Internal flag, not a database field
+
+    // Add profile image URL if changed
+    if (profileImage || parsedUserData.removeProfileImage) {
+      updateData.profileImg = profileImgUrl;
+    }
+
+    // Convert boolean fields if they come as strings
+    if (typeof updateData.isFeatured === "string") {
+      updateData.isFeatured = updateData.isFeatured === "true";
+    }
+    if (typeof updateData.isAgent === "string") {
+      updateData.isAgent = updateData.isAgent === "true";
+    }
+    if (typeof updateData.isActive === "string") {
+      updateData.isActive = updateData.isActive === "true";
+    }
+    if (typeof updateData.twofaEnabled === "string") {
+      updateData.twofaEnabled = updateData.twofaEnabled === "true";
+    }
+
+    console.log("Final update data for Prisma:", updateData);
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        contactNo: true,
+        profileImg: true,
+        address: true,
+        linkedinUrl: true,
+        isFeatured: true,
+        profileDescription: true,
+        isAgent: true,
+        agentDescription: true,
+        twofaEnabled: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
-    if (existingUser) {
-      if (profileImage) {
-        deleteImageFile(profileImage.path);
-      }
-      throw new APIError(409, "Email already exists");
+    return updatedUser;
+  } catch (error) {
+    console.error("Error in updateUserWithProfileImageService:", error);
+    // Clean up uploaded file if error occurred during processing
+    if (profileImage) {
+      deleteImageFile(profileImage.path);
     }
+    throw error;
   }
-
-  // Check LinkedIn URL uniqueness if being updated
-  if (userData.linkedinUrl && userData.linkedinUrl !== user.linkedinUrl) {
-    const existingUser = await prisma.user.findUnique({
-      where: { linkedinUrl: userData.linkedinUrl },
-    });
-
-    if (existingUser) {
-      if (profileImage) {
-        deleteImageFile(profileImage.path);
-      }
-      throw new APIError(409, "LinkedIn URL already exists");
-    }
-  }
-
-  let profileImgUrl = userData.profileImg;
-
-  // If new profile image was uploaded
-  if (profileImage) {
-    profileImgUrl = `/uploads/profiles/${path.basename(profileImage.filename)}`;
-
-    // Delete old profile image if exists
-    if (user.profileImg) {
-      await deleteImageFile(user.profileImg);
-    }
-  }
-
-  const updatedUser = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      ...userData,
-      profileImg: profileImgUrl,
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      contactNo: true,
-      profileImg: true,
-      address: true,
-      linkedinUrl: true,
-      isFeatured: true,
-      profileDescription: true,
-      isAgent: true,
-      agentDescription: true,
-      twofaEnabled: true,
-      isActive: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-
-  return updatedUser;
 };
 // Change password
 export const changePasswordService = async (
