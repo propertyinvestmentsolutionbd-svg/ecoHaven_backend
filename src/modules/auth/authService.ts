@@ -458,6 +458,8 @@ export const getUserByIdService = async (userId: string): Promise<any> => {
       name: true,
       email: true,
       role: true,
+      country: true,
+      designation: true,
       contactNo: true,
       profileImg: true,
       address: true,
