@@ -105,7 +105,7 @@ export const getUserPermissionsService = async (
     },
     orderBy: {
       menu: {
-        name: "asc",
+        id: "asc",
       },
     },
   });

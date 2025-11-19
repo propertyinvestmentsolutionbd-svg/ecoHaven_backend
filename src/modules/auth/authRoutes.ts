@@ -18,7 +18,7 @@ import {
 import { uploadProfileImage } from "../../config/multer";
 
 const router = express.Router();
-router.get("/", getAllUsers);
+router.get("/employees", getAllUsers);
 
 // Get user by ID
 router.get("/profile/:id", getUserById);
