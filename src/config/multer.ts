@@ -1,12 +1,18 @@
 // config/multer.ts
 import multer from "multer";
 import path from "path";
-import { Request } from "express";
+import { NextFunction, Request } from "express";
+import fs from "fs";
 
 // Configure storage for project images
 const projectStorage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb) => {
-    cb(null, "uploads/projects/");
+    const dir = "uploads/projects/";
+    // Ensure directory exists
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
   },
   filename: (req: Request, file: Express.Multer.File, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -18,7 +24,12 @@ const projectStorage = multer.diskStorage({
 // Configure storage for gallery items
 const galleryStorage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb) => {
-    cb(null, "uploads/gallery/");
+    const dir = "uploads/gallery/";
+    // Ensure directory exists
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
   },
   filename: (req: Request, file: Express.Multer.File, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -26,7 +37,45 @@ const galleryStorage = multer.diskStorage({
     cb(null, "gallery-" + uniqueSuffix + fileExtension);
   },
 });
+// Create a dynamic storage that routes files based on field name
+const dynamicStorage = multer.diskStorage({
+  destination: (req: Request, file: Express.Multer.File, cb) => {
+    let dir = "uploads/";
 
+    if (file.fieldname === "projectImages") {
+      dir += "projects/";
+    } else if (file.fieldname === "galleryMedia") {
+      dir += "gallery/";
+    } else if (file.fieldname === "profileImg") {
+      dir += "profiles/";
+    }
+
+    // Ensure directory exists
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    console.log(`Saving ${file.fieldname} to: ${dir}`);
+    cb(null, dir);
+  },
+  filename: (req: Request, file: Express.Multer.File, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const fileExtension = path.extname(file.originalname);
+
+    let prefix = "file";
+    if (file.fieldname === "projectImages") {
+      prefix = "project";
+    } else if (file.fieldname === "galleryMedia") {
+      prefix = "gallery";
+    } else if (file.fieldname === "profileImg") {
+      prefix = "profile";
+    }
+
+    const filename = `${prefix}-${uniqueSuffix}${fileExtension}`;
+    console.log(`Generated filename for ${file.fieldname}: ${filename}`);
+    cb(null, filename);
+  },
+});
 // File filter for images only
 const imageFileFilter = (
   req: Request,
@@ -77,15 +126,56 @@ export const galleryMediaUpload = multer({
 export const uploadProjectImages = projectImageUpload.array(
   "projectImages",
   10
-); // Max 10 project images
-export const uploadGalleryMedia = galleryMediaUpload.array("galleryMedia", 10); // Max 10 gallery items
-export const uploadAllMedia = galleryMediaUpload.fields([
-  { name: "projectImages", maxCount: 10 },
-  { name: "galleryMedia", maxCount: 10 },
-]);
+);
+export const uploadGalleryMedia = galleryMediaUpload.array("galleryMedia", 10);
+// export const uploadAllMedia = multer({
+//   storage: projectStorage, // Use projectStorage for projectImages
+// }).fields([
+//   { name: "projectImages", maxCount: 10 },
+//   { name: "galleryMedia", maxCount: 10 },
+// ]);
 // config/multer.ts - Add this to your existing file
 
 // Configure storage for profile images
+
+// Custom middleware to handle different storages based on field name
+export const uploadAllMedia = multer({
+  storage: dynamicStorage,
+  fileFilter: (
+    req: Request,
+    file: Express.Multer.File,
+    cb: multer.FileFilterCallback
+  ) => {
+    // Use different filters based on field name
+    if (file.fieldname === "projectImages") {
+      // Project images: images only
+      if (file.mimetype.startsWith("image/")) {
+        cb(null, true);
+      } else {
+        cb(new Error("Project images must be image files only!"));
+      }
+    } else if (file.fieldname === "galleryMedia") {
+      // Gallery media: images and videos
+      if (
+        file.mimetype.startsWith("image/") ||
+        file.mimetype.startsWith("video/")
+      ) {
+        cb(null, true);
+      } else {
+        cb(new Error("Gallery media must be image or video files!"));
+      }
+    } else {
+      cb(null, true);
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit for all files
+  },
+}).fields([
+  { name: "projectImages", maxCount: 10 },
+  { name: "galleryMedia", maxCount: 10 },
+]);
+
 const profileStorage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb) => {
     cb(null, "uploads/profiles/");

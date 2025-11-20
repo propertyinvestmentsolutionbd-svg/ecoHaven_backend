@@ -3,7 +3,6 @@ import express from "express";
 import {
   createProject,
   createProjectWithFiles,
-  getAllProjects,
   getProjectById,
   updateProject,
   deleteProject,
@@ -14,6 +13,7 @@ import {
   deleteProjectImage,
   deleteGalleryItem,
   getProjectStats,
+  getAllProjects,
 } from "./projectController";
 import {
   uploadAllMedia,
@@ -24,7 +24,7 @@ import {
 const router = express.Router();
 
 // Public routes (for frontend)
-router.get("/", getAllProjects);
+router.get("/projects", getAllProjects);
 router.get("/stats", getProjectStats);
 router.get("/:id", getProjectById);
 

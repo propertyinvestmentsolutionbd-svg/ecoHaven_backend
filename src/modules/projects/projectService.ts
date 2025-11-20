@@ -63,114 +63,206 @@ export const createProjectService = async (
 
   return result;
 };
-
-// services/projectService.ts
 export const createProjectWithFilesService = async (
   projectData: any,
-  projectImages: Express.Multer.File[],
-  galleryMedia: Express.Multer.File[]
+  projectImages: Express.Multer.File[] = [],
+  galleryMedia: Express.Multer.File[] = []
 ): Promise<any> => {
+  console.log("=== SERVICE START ===");
+  console.log("Project images:", projectImages?.length || 0);
+  console.log("Gallery media:", galleryMedia?.length || 0);
+
   // Extract only the fields that belong to the Project model
   const {
-    imageCaptions,
-    galleryTitles,
-    galleryCategories,
-    galleryItems,
+    imageCaptions = [],
+    galleryTitles = [],
+    galleryCategories = [],
+    galleryItems = [],
     ...projectPayload
   } = projectData;
 
-  const result = await prisma.$transaction(async (tx) => {
-    // Create the project with only valid fields
-    const project = await tx.project.create({
-      data: {
-        name: projectPayload.name,
-        mapUrl: projectPayload.mapUrl,
-        location: projectPayload.location,
-        priceRange: projectPayload.priceRange,
-        sizeSqft: projectPayload.sizeSqft,
-        landArea: projectPayload.landArea,
-        status: projectPayload.status,
-        description: projectPayload.description,
-        amenities: projectPayload.amenities || [],
-        projectType: projectPayload.projectType,
-        progressPercentage: projectPayload.progressPercentage,
-        completionYear: projectPayload.completionYear,
-        brochureUrl: projectPayload.brochureUrl,
-        virtualTourUrl: projectPayload.virtualTourUrl,
-        latitude: projectPayload.latitude,
-        longitude: projectPayload.longitude,
-      },
-    });
+  console.log("Project payload:", projectPayload);
 
-    // Process uploaded project images
-    if (projectImages && projectImages.length > 0) {
-      const projectImageData = projectImages.map((file, index) => ({
-        imageUrl: `/uploads/projects/${path.basename(file.filename)}`,
-        caption: imageCaptions?.[index] || null,
-        isFeatured: index === 0, // First image as featured by default
-        projectId: project.id,
-      }));
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // Validate required fields for project
+      if (!projectPayload.name) {
+        throw new Error("Project name is required");
+      }
+      if (!projectPayload.status) {
+        throw new Error("Project status is required");
+      }
+      if (!projectPayload.projectType) {
+        throw new Error("Project type is required");
+      }
 
-      await tx.projectImage.createMany({
-        data: projectImageData,
+      console.log("Creating project in database...");
+
+      // Convert status to uppercase if it's an enum
+      const status = projectPayload.status || "Upcoming";
+
+      // Create the project - this works with or without images
+      const project = await tx.project.create({
+        data: {
+          name: projectPayload.name,
+          mapUrl: projectPayload.mapUrl || null,
+          location: projectPayload.location || null,
+          priceRange: projectPayload.priceRange || null,
+          sizeSqft: projectPayload.sizeSqft
+            ? parseInt(projectPayload.sizeSqft)
+            : null,
+          landArea: projectPayload.landArea || null,
+          status: status,
+          description: projectPayload.description || null,
+          amenities: projectPayload.amenities || [],
+          projectType: projectPayload.projectType,
+          progressPercentage: projectPayload.progressPercentage
+            ? parseInt(projectPayload.progressPercentage)
+            : 0,
+          completionYear: projectPayload.completionYear
+            ? parseInt(projectPayload.completionYear)
+            : null,
+          brochureUrl: projectPayload.brochureUrl || null,
+          virtualTourUrl: projectPayload.virtualTourUrl || null,
+          latitude: projectPayload.latitude
+            ? parseFloat(projectPayload.latitude)
+            : null,
+          longitude: projectPayload.longitude
+            ? parseFloat(projectPayload.longitude)
+            : null,
+        },
       });
-    }
 
-    // Process uploaded gallery media
-    if (galleryMedia && galleryMedia.length > 0) {
-      const galleryData = galleryMedia.map((file, index) => {
-        const isImage = file.mimetype.startsWith("image/");
-        const isVideo = file.mimetype.startsWith("video/");
+      console.log(`Project created successfully with ID: ${project.id}`);
 
-        return {
-          title: galleryTitles?.[index] || `Gallery Item ${index + 1}`,
-          category: galleryCategories?.[index] || "general",
-          imageUrl: isImage
-            ? `/uploads/gallery/${path.basename(file.filename)}`
-            : null,
-          videoUrl: isVideo
-            ? `/uploads/gallery/${path.basename(file.filename)}`
-            : null,
+      // PROCESS PROJECT IMAGES (Optional)
+      if (projectImages && projectImages.length > 0) {
+        console.log(`Processing ${projectImages.length} project images...`);
+
+        const projectImageData = projectImages.map((file, index) => ({
+          imageUrl: `/uploads/projects/${path.basename(file.filename)}`,
+          caption: imageCaptions?.[index] || null,
+          isFeatured: index === 0, // First image as featured
           projectId: project.id,
-        };
-      });
+        }));
 
-      await tx.gallery.createMany({
-        data: galleryData,
-      });
-    }
+        await tx.projectImage.createMany({
+          data: projectImageData,
+        });
 
-    // Process additional gallery items from JSON (if any)
-    if (galleryItems && galleryItems.length > 0) {
-      const additionalGalleryData = galleryItems.map((item: any) => ({
-        ...item,
-        projectId: project.id,
-      }));
+        console.log(`Created ${projectImageData.length} project images`);
+      } else {
+        console.log(
+          "No project images provided - project created without images"
+        );
+      }
 
-      await tx.gallery.createMany({
-        data: additionalGalleryData,
-      });
-    }
+      // PROCESS GALLERY MEDIA (Optional)
+      if (galleryMedia && galleryMedia.length > 0) {
+        console.log(`Processing ${galleryMedia.length} gallery items...`);
 
-    // Return the complete project with relations
-    return await tx.project.findUnique({
-      where: { id: project.id },
-      include: {
-        images: {
-          orderBy: {
-            isFeatured: "desc",
+        const galleryData = galleryMedia.map((file, index) => {
+          const isImage = file.mimetype.startsWith("image/");
+          const isVideo = file.mimetype.startsWith("video/");
+
+          return {
+            title: galleryTitles?.[index] || `Gallery Item ${index + 1}`,
+            category: galleryCategories?.[index] || "general",
+            imageUrl: isImage
+              ? `/uploads/gallery/${path.basename(file.filename)}`
+              : null,
+            videoUrl: isVideo
+              ? `/uploads/gallery/${path.basename(file.filename)}`
+              : null,
+            projectId: project.id,
+          };
+        });
+
+        await tx.gallery.createMany({
+          data: galleryData,
+        });
+
+        console.log(`Created ${galleryData.length} gallery items`);
+      } else {
+        console.log(
+          "No gallery media provided - project created without gallery"
+        );
+      }
+
+      // PROCESS ADDITIONAL GALLERY ITEMS FROM JSON (Optional)
+      if (galleryItems && galleryItems.length > 0) {
+        console.log(
+          `Processing ${galleryItems.length} additional gallery items...`
+        );
+
+        const additionalGalleryData = galleryItems.map((item: any) => ({
+          ...item,
+          projectId: project.id,
+        }));
+
+        await tx.gallery.createMany({
+          data: additionalGalleryData,
+        });
+
+        console.log(
+          `Created ${additionalGalleryData.length} additional gallery items`
+        );
+      }
+
+      // Return the complete project with relations
+      const completeProject = await tx.project.findUnique({
+        where: { id: project.id },
+        include: {
+          images: {
+            orderBy: {
+              isFeatured: "desc",
+            },
+          },
+          galleryItems: {
+            orderBy: {
+              createdAt: "desc",
+            },
           },
         },
-        galleryItems: {
-          orderBy: {
-            createdAt: "desc",
-          },
-        },
-      },
+      });
+
+      console.log("=== SERVICE COMPLETED SUCCESSFULLY ===");
+      return completeProject;
     });
-  });
 
-  return result;
+    return result;
+  } catch (error) {
+    console.error("Error in createProjectWithFilesService:", error);
+
+    // Clean up uploaded files if project creation failed
+    if (projectImages && projectImages.length > 0) {
+      projectImages.forEach((file) => {
+        try {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+            console.log(`Cleaned up project image: ${file.path}`);
+          }
+        } catch (cleanupError) {
+          console.error("Error cleaning up project image:", cleanupError);
+        }
+      });
+    }
+
+    if (galleryMedia && galleryMedia.length > 0) {
+      galleryMedia.forEach((file) => {
+        try {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+            console.log(`Cleaned up gallery media: ${file.path}`);
+          }
+        } catch (cleanupError) {
+          console.error("Error cleaning up gallery media:", cleanupError);
+        }
+      });
+    }
+
+    throw error;
+  }
 };
 
 // Add images to existing project with file upload

@@ -144,6 +144,7 @@ enum Roles {
 }
 
 enum ProjectStatus {
-  ongoing
-  completed
+  Ongoing
+  Completed
+  Upcoming
 }

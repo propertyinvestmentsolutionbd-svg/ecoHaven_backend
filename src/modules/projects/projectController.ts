@@ -18,45 +18,102 @@ import {
   createProjectService,
 } from "./projectService";
 import { reponseFormat } from "../../shared/responseFormat";
-// Create new project with direct file uploads
 export const createProjectWithFiles = catchAsync(
   async (req: Request, res: Response) => {
-    const projectImages = (req.files as any)?.projectImages || [];
-    const galleryMedia = (req.files as any)?.galleryMedia || [];
+    try {
+      const projectImages = (req.files as any)?.projectImages || [];
+      const galleryMedia = (req.files as any)?.galleryMedia || [];
 
-    // Parse form data safely
-    const projectData = {
-      ...req.body,
-      amenities: req.body.amenities ? JSON.parse(req.body.amenities) : [],
-      imageCaptions: req.body.imageCaptions
-        ? JSON.parse(req.body.imageCaptions)
-        : [],
-      galleryTitles: req.body.galleryTitles
-        ? JSON.parse(req.body.galleryTitles)
-        : [],
-      galleryCategories: req.body.galleryCategories
-        ? JSON.parse(req.body.galleryCategories)
-        : [],
-      galleryItems: req.body.galleryItems
-        ? JSON.parse(req.body.galleryItems)
-        : [],
-    };
+      console.log("=== REQUEST DEBUG ===");
+      console.log("Body keys:", Object.keys(req.body));
+      console.log("projectData from body:", req.body.projectData);
+      console.log("Project images:", projectImages.length);
+      console.log("Gallery media:", galleryMedia.length);
 
-    const result = await createProjectWithFilesService(
-      projectData,
-      projectImages,
-      galleryMedia
-    );
+      // Parse form data safely - FIXED
+      let projectData;
+      try {
+        // First parse the projectData string, then merge with other fields
+        const parsedProjectData = req.body.projectData
+          ? JSON.parse(req.body.projectData)
+          : {};
 
-    reponseFormat(res, {
-      success: true,
-      statusCode: 201,
-      message: "Project created with files successfully",
-      data: result,
-    });
+        projectData = {
+          ...parsedProjectData, // This contains name, status, etc.
+          amenities: req.body.amenities ? JSON.parse(req.body.amenities) : [],
+          imageCaptions: req.body.imageCaptions
+            ? JSON.parse(req.body.imageCaptions)
+            : [],
+          galleryTitles: req.body.galleryTitles
+            ? JSON.parse(req.body.galleryTitles)
+            : [],
+          galleryCategories: req.body.galleryCategories
+            ? JSON.parse(req.body.galleryCategories)
+            : [],
+          galleryItems: req.body.galleryItems
+            ? JSON.parse(req.body.galleryItems)
+            : [],
+        };
+      } catch (parseError) {
+        console.error("Error parsing form data:", parseError);
+        return reponseFormat(res, {
+          success: false,
+          statusCode: 400,
+          message: "Invalid form data format",
+        });
+      }
+
+      console.log("=== PARSED PROJECT DATA ===");
+      console.log("Project name:", projectData.name);
+      console.log("Project status:", projectData.status);
+      console.log("Project type:", projectData.projectType);
+      console.log("Full project data:", projectData);
+
+      // Validate required fields in controller before calling service
+      if (
+        !projectData.name ||
+        !projectData.status ||
+        !projectData.projectType
+      ) {
+        console.error("Missing required fields:", {
+          name: projectData.name,
+          status: projectData.status,
+          projectType: projectData.projectType,
+        });
+        return reponseFormat(res, {
+          success: false,
+          statusCode: 400,
+          message: "Missing required fields: name, status, or projectType",
+        });
+      }
+
+      console.log("Calling createProjectWithFilesService...");
+
+      const result = await createProjectWithFilesService(
+        projectData, // Now this is the parsed object, not the string
+        projectImages,
+        galleryMedia
+      );
+
+      console.log("Project creation completed successfully");
+
+      reponseFormat(res, {
+        success: true,
+        statusCode: 201,
+        message: "Project created successfully",
+        data: result,
+      });
+    } catch (error) {
+      console.error("Error in createProjectWithFiles:", error);
+
+      reponseFormat(res, {
+        success: false,
+        statusCode: 500,
+        message: error.message || "Failed to create project",
+      });
+    }
   }
 );
-
 // Create project without files (only data)
 export const createProject = catchAsync(async (req: Request, res: Response) => {
   const result = await createProjectService(req.body);
@@ -144,6 +201,8 @@ export const addGalleryItemsData = catchAsync(
 // Get all projects
 export const getAllProjects = catchAsync(
   async (req: Request, res: Response) => {
+    console.log("hit");
+
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
 
@@ -154,7 +213,7 @@ export const getAllProjects = catchAsync(
     };
 
     const result = await getAllProjectsService(filters, page, limit);
-
+    console.log({ result });
     reponseFormat(res, {
       success: true,
       statusCode: 200,
