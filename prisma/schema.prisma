@@ -104,7 +104,7 @@ model ProjectImage {
   caption    String?
   isFeatured Boolean @default(false)
   projectId  Int
-  project    Project @relation(fields: [projectId], references: [id])
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model Gallery {
@@ -116,7 +116,7 @@ model Gallery {
   createdAt DateTime @default(now())
 
   projectId Int?
-  project   Project? @relation(fields: [projectId], references: [id])
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model Contact {

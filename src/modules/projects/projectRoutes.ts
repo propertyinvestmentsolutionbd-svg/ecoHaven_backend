@@ -36,7 +36,7 @@ router.post(
   createProjectWithFiles
 ); // With file uploads
 router.put("/:id", updateProject);
-router.delete("/:id", deleteProject);
+router.delete("/project/:id", deleteProject);
 router.post(
   "/:id/images",
 
