@@ -264,7 +264,329 @@ export const createProjectWithFilesService = async (
     throw error;
   }
 };
+export const updateProjectWithFilesService = async (
+  projectId: number,
+  projectData: any,
+  projectImages: Express.Multer.File[] = [],
+  galleryMedia: Express.Multer.File[] = []
+): Promise<any> => {
+  console.log("=== UPDATE SERVICE ===");
+  console.log("Project ID:", projectId);
+  console.log("Raw project data:", projectData);
+  console.log("New project images:", projectImages.length);
+  console.log("New gallery media:", galleryMedia.length);
 
+  // Extract fields
+  const {
+    imageCaptions = [],
+    galleryTitles = [],
+    galleryCategories = [],
+    galleryItems = [],
+    removeProfileImage = false,
+    ...projectPayload
+  } = projectData;
+
+  console.log("Cleaned project payload:", projectPayload);
+  console.log("removeProfileImage:", removeProfileImage);
+  console.log("amenities:", projectPayload.amenities);
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // Check if project exists
+      const existingProject = await tx.project.findUnique({
+        where: { id: projectId },
+        include: {
+          images: true,
+          galleryItems: true,
+        },
+      });
+
+      if (!existingProject) {
+        throw new Error("Project not found");
+      }
+
+      console.log("Existing project name:", existingProject.name);
+      console.log("Existing project amenities:", existingProject.amenities);
+
+      // Prepare update data
+      const updateData: any = {};
+
+      // Debug each field
+      Object.keys(projectPayload).forEach((key) => {
+        console.log(`Field ${key}:`, {
+          incoming: projectPayload[key],
+          existing: existingProject[key],
+          type: typeof projectPayload[key],
+        });
+      });
+
+      // Only include fields that are provided
+      if (projectPayload.name !== undefined) {
+        updateData.name = projectPayload.name;
+        console.log(
+          `Updating name: "${existingProject.name}" → "${projectPayload.name}"`
+        );
+      }
+
+      if (projectPayload.location !== undefined) {
+        updateData.location = projectPayload.location;
+        console.log(
+          `Updating location: "${existingProject.location}" → "${projectPayload.location}"`
+        );
+      }
+
+      if (projectPayload.priceRange !== undefined) {
+        updateData.priceRange = projectPayload.priceRange;
+        console.log(
+          `Updating priceRange: "${existingProject.priceRange}" → "${projectPayload.priceRange}"`
+        );
+      }
+
+      if (projectPayload.status !== undefined) {
+        updateData.status = projectPayload.status; // Use as-is, don't convert to uppercase
+        console.log(
+          `Updating status: "${existingProject.status}" → "${projectPayload.status}"`
+        );
+      }
+
+      if (projectPayload.description !== undefined) {
+        updateData.description = projectPayload.description;
+        console.log(
+          `Updating description: "${existingProject.description}" → "${projectPayload.description}"`
+        );
+      }
+
+      if (projectPayload.projectType !== undefined) {
+        updateData.projectType = projectPayload.projectType;
+        console.log(
+          `Updating projectType: "${existingProject.projectType}" → "${projectPayload.projectType}"`
+        );
+      }
+
+      // Handle numeric fields more safely
+      if (projectPayload.sizeSqft !== undefined) {
+        updateData.sizeSqft = projectPayload.sizeSqft
+          ? parseInt(projectPayload.sizeSqft)
+          : null;
+        console.log(
+          `Updating sizeSqft: ${existingProject.sizeSqft} → ${updateData.sizeSqft}`
+        );
+      }
+
+      if (projectPayload.progressPercentage !== undefined) {
+        updateData.progressPercentage = projectPayload.progressPercentage
+          ? parseInt(projectPayload.progressPercentage)
+          : 0;
+        console.log(
+          `Updating progressPercentage: ${existingProject.progressPercentage} → ${updateData.progressPercentage}`
+        );
+      }
+
+      // Handle amenities - ensure it's always an array
+      if (projectPayload.amenities !== undefined) {
+        updateData.amenities = Array.isArray(projectPayload.amenities)
+          ? projectPayload.amenities
+          : [];
+        console.log(
+          `Updating amenities:`,
+          existingProject.amenities,
+          "→",
+          updateData.amenities
+        );
+      }
+
+      // Handle other fields...
+      if (projectPayload.mapUrl !== undefined)
+        updateData.mapUrl = projectPayload.mapUrl;
+      if (projectPayload.landArea !== undefined)
+        updateData.landArea = projectPayload.landArea;
+      if (projectPayload.completionYear !== undefined)
+        updateData.completionYear = projectPayload.completionYear
+          ? parseInt(projectPayload.completionYear)
+          : null;
+      if (projectPayload.brochureUrl !== undefined)
+        updateData.brochureUrl = projectPayload.brochureUrl;
+      if (projectPayload.virtualTourUrl !== undefined)
+        updateData.virtualTourUrl = projectPayload.virtualTourUrl;
+      if (projectPayload.latitude !== undefined)
+        updateData.latitude = projectPayload.latitude
+          ? parseFloat(projectPayload.latitude)
+          : null;
+      if (projectPayload.longitude !== undefined)
+        updateData.longitude = projectPayload.longitude
+          ? parseFloat(projectPayload.longitude)
+          : null;
+
+      console.log("Final update data to Prisma:", updateData);
+
+      // Update the project
+      const updatedProject = await tx.project.update({
+        where: { id: projectId },
+        data: updateData,
+      });
+
+      console.log("Prisma update result:", updatedProject);
+
+      // HANDLE PROJECT IMAGES UPDATE - ALWAYS REPLACE WHEN NEW IMAGES ARE UPLOADED
+      if (projectImages && projectImages.length > 0) {
+        console.log(
+          `Processing ${projectImages.length} new project images, replacing existing ones...`
+        );
+
+        // Delete existing images and their files
+        if (existingProject.images.length > 0) {
+          console.log(
+            `Deleting ${existingProject.images.length} existing project images...`
+          );
+
+          for (const image of existingProject.images) {
+            await deleteImageFile(image.imageUrl);
+            console.log(`Deleted old image file: ${image.imageUrl}`);
+          }
+
+          await tx.projectImage.deleteMany({
+            where: { projectId: projectId },
+          });
+          console.log(
+            `Deleted ${existingProject.images.length} existing project images from database`
+          );
+        }
+
+        // Add new project images
+        const projectImageData = projectImages.map((file, index) => ({
+          imageUrl: `/uploads/projects/${path.basename(file.filename)}`,
+          caption: imageCaptions?.[index] || null,
+          isFeatured: index === 0,
+          projectId: projectId,
+        }));
+
+        await tx.projectImage.createMany({
+          data: projectImageData,
+        });
+
+        console.log(`Added ${projectImageData.length} new project images`);
+      } else if (removeProfileImage && existingProject.images.length > 0) {
+        // Remove all images if removeProfileImage is true but no new images
+        console.log("Removing all project images as requested...");
+
+        for (const image of existingProject.images) {
+          await deleteImageFile(image.imageUrl);
+          console.log(`Deleted image file: ${image.imageUrl}`);
+        }
+
+        await tx.projectImage.deleteMany({
+          where: { projectId: projectId },
+        });
+
+        console.log("Removed all project images");
+      } else {
+        console.log("No image changes requested");
+      }
+
+      // HANDLE GALLERY MEDIA UPDATE
+      if (galleryMedia && galleryMedia.length > 0) {
+        console.log(`Processing ${galleryMedia.length} new gallery items...`);
+
+        const galleryData = galleryMedia.map((file, index) => {
+          const isImage = file.mimetype.startsWith("image/");
+          const isVideo = file.mimetype.startsWith("video/");
+
+          return {
+            title: galleryTitles?.[index] || `Gallery Item ${index + 1}`,
+            category: galleryCategories?.[index] || "general",
+            imageUrl: isImage
+              ? `/uploads/gallery/${path.basename(file.filename)}`
+              : null,
+            videoUrl: isVideo
+              ? `/uploads/gallery/${path.basename(file.filename)}`
+              : null,
+            projectId: projectId,
+          };
+        });
+
+        await tx.gallery.createMany({
+          data: galleryData,
+        });
+
+        console.log(`Added ${galleryData.length} new gallery items`);
+      }
+
+      // PROCESS ADDITIONAL GALLERY ITEMS FROM JSON
+      if (galleryItems && galleryItems.length > 0) {
+        console.log(
+          `Processing ${galleryItems.length} additional gallery items...`
+        );
+
+        const additionalGalleryData = galleryItems.map((item: any) => ({
+          ...item,
+          projectId: projectId,
+        }));
+
+        await tx.gallery.createMany({
+          data: additionalGalleryData,
+        });
+
+        console.log(
+          `Added ${additionalGalleryData.length} additional gallery items`
+        );
+      }
+
+      // Return the complete updated project with relations
+      const completeProject = await tx.project.findUnique({
+        where: { id: projectId },
+        include: {
+          images: {
+            orderBy: {
+              isFeatured: "desc",
+            },
+          },
+          galleryItems: {
+            orderBy: {
+              createdAt: "desc",
+            },
+          },
+        },
+      });
+
+      console.log("Project update completed successfully");
+      console.log("Final project amenities:", completeProject.amenities);
+      return completeProject;
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error in updateProjectWithFilesService:", error);
+
+    // Clean up uploaded files if update failed
+    if (projectImages && projectImages.length > 0) {
+      projectImages.forEach((file) => {
+        try {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+            console.log(`Cleaned up project image: ${file.path}`);
+          }
+        } catch (cleanupError) {
+          console.error("Error cleaning up project image:", cleanupError);
+        }
+      });
+    }
+
+    if (galleryMedia && galleryMedia.length > 0) {
+      galleryMedia.forEach((file) => {
+        try {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+            console.log(`Cleaned up gallery media: ${file.path}`);
+          }
+        } catch (cleanupError) {
+          console.error("Error cleaning up gallery media:", cleanupError);
+        }
+      });
+    }
+
+    throw error;
+  }
+};
 // Add images to existing project with file upload
 export const addProjectImagesWithFilesService = async (
   projectId: number,
@@ -643,17 +965,35 @@ export const getProjectStatsService = async (): Promise<IProjectStats> => {
   };
 };
 
-// Helper function to delete physical image file
 const deleteImageFile = async (imageUrl: string): Promise<void> => {
   try {
-    const filename = path.basename(imageUrl);
-    const filePath = path.join("uploads", "projects", filename);
+    if (!imageUrl) {
+      console.log("No image URL provided for deletion");
+      return;
+    }
+
+    // Handle both formats: /uploads/projects/filename and uploads/projects/filename
+    let filePath = imageUrl;
+    if (imageUrl.startsWith("/")) {
+      filePath = imageUrl.substring(1); // Remove leading slash
+    }
+
+    console.log(`Attempting to delete file: ${filePath}`);
 
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
+      console.log(`Successfully deleted file: ${filePath}`);
+    } else {
+      // Try alternative path format
+      const altPath = path.join("uploads", "projects", path.basename(imageUrl));
+      if (fs.existsSync(altPath)) {
+        fs.unlinkSync(altPath);
+        console.log(`Successfully deleted file (alt path): ${altPath}`);
+      } else {
+        console.log(`File not found, skipping: ${filePath}`);
+      }
     }
   } catch (error) {
     console.error("Error deleting image file:", error);
-    // Don't throw error, just log it
   }
 };

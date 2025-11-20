@@ -14,6 +14,7 @@ import {
   deleteGalleryItem,
   getProjectStats,
   getAllProjects,
+  updateProjectWithFiles,
 } from "./projectController";
 import {
   uploadAllMedia,
@@ -29,13 +30,19 @@ router.get("/stats", getProjectStats);
 router.get("/:id", getProjectById);
 
 // Protected admin routes
-router.post("/createProject", createProject); // JSON only
+// router.post("/createProject", createProject); // JSON only
 router.post(
   "/createProject/with-files",
   uploadAllMedia,
   createProjectWithFiles
 ); // With file uploads
-router.put("/:id", updateProject);
+router.put(
+  "/project/:id/update/with-files",
+  uploadAllMedia,
+  updateProjectWithFiles
+);
+
+// router.put("/:id", updateProject);
 router.delete("/project/:id", deleteProject);
 router.post(
   "/:id/images",

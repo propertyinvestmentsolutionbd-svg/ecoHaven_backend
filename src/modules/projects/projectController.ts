@@ -16,6 +16,7 @@ import {
   addProjectImagesWithFilesService,
   createProjectWithFilesService,
   createProjectService,
+  updateProjectWithFilesService,
 } from "./projectService";
 import { reponseFormat } from "../../shared/responseFormat";
 export const createProjectWithFiles = catchAsync(
@@ -114,17 +115,107 @@ export const createProjectWithFiles = catchAsync(
     }
   }
 );
-// Create project without files (only data)
-export const createProject = catchAsync(async (req: Request, res: Response) => {
-  const result = await createProjectService(req.body);
+export const updateProjectWithFiles = catchAsync(
+  async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const projectImages = (req.files as any)?.projectImages || [];
+      const galleryMedia = (req.files as any)?.galleryMedia || [];
 
-  reponseFormat(res, {
-    success: true,
-    statusCode: 201,
-    message: "Project created successfully",
-    data: result,
-  });
-});
+      console.log("=== UPDATE PROJECT CONTROLLER ===");
+      console.log("Project ID:", id);
+      console.log("Raw request body:", req.body);
+
+      // Parse the main project data from the projectData field
+      let mainProjectData = {};
+      try {
+        if (req.body.projectData) {
+          mainProjectData = JSON.parse(req.body.projectData);
+          console.log("Parsed projectData field:", mainProjectData);
+        }
+      } catch (parseError) {
+        console.error("Error parsing projectData field:", parseError);
+        return reponseFormat(res, {
+          success: false,
+          statusCode: 400,
+          message: "Invalid projectData format",
+        });
+      }
+
+      // Combine all data - PRESERVE all fields from mainProjectData
+      let projectData;
+      try {
+        projectData = {
+          ...mainProjectData, // Primary source for all project data
+          // Use mainProjectData fields first, fallback to req.body only if not present
+          amenities:
+            mainProjectData.amenities ||
+            (req.body.amenities ? JSON.parse(req.body.amenities) : []),
+          imageCaptions:
+            mainProjectData.imageCaptions ||
+            (req.body.imageCaptions ? JSON.parse(req.body.imageCaptions) : []),
+          galleryTitles:
+            mainProjectData.galleryTitles ||
+            (req.body.galleryTitles ? JSON.parse(req.body.galleryTitles) : []),
+          galleryCategories:
+            mainProjectData.galleryCategories ||
+            (req.body.galleryCategories
+              ? JSON.parse(req.body.galleryCategories)
+              : []),
+          galleryItems:
+            mainProjectData.galleryItems ||
+            (req.body.galleryItems ? JSON.parse(req.body.galleryItems) : []),
+        };
+
+        // Debug: Check if amenities are preserved
+        console.log(
+          "Amenities from mainProjectData:",
+          mainProjectData.amenities
+        );
+        console.log("Final amenities in projectData:", projectData.amenities);
+        console.log(
+          "removeProfileImage in projectData:",
+          projectData.removeProfileImage
+        );
+      } catch (parseError) {
+        console.error("Error parsing form data:", parseError);
+        return reponseFormat(res, {
+          success: false,
+          statusCode: 400,
+          message: "Invalid form data format",
+        });
+      }
+
+      console.log("Final combined project data:", projectData);
+      console.log("New project images:", projectImages.length);
+      console.log("New gallery media:", galleryMedia.length);
+
+      const result = await updateProjectWithFilesService(
+        parseInt(id),
+        projectData,
+        projectImages,
+        galleryMedia
+      );
+
+      console.log("Final response data:", result);
+
+      reponseFormat(res, {
+        success: true,
+        statusCode: 200,
+        message: "Project updated successfully",
+        data: result,
+      });
+    } catch (error) {
+      console.error("Error in updateProjectWithFiles:", error);
+
+      reponseFormat(res, {
+        success: false,
+        statusCode: 500,
+        message: error.message || "Failed to update project",
+      });
+    }
+  }
+);
 
 // Add images to existing project with file upload
 export const addProjectImages = catchAsync(
