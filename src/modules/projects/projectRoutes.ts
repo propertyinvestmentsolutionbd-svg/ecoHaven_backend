@@ -15,6 +15,7 @@ import {
   getProjectStats,
   getAllProjects,
   updateProjectWithFiles,
+  getProjectsForDropdown,
 } from "./projectController";
 import {
   uploadAllMedia,
@@ -28,6 +29,7 @@ const router = express.Router();
 router.get("/projects", getAllProjects);
 router.get("/stats", getProjectStats);
 router.get("/:id", getProjectById);
+router.get("/projects/dropdown", getProjectsForDropdown);
 
 // Protected admin routes
 // router.post("/createProject", createProject); // JSON only
@@ -51,7 +53,7 @@ router.post(
   addProjectImages
 );
 router.post(
-  "/:id/gallery-items",
+  "/project/:id/gallery-items",
 
   uploadGalleryMedia,
   addGalleryItems

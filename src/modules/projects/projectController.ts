@@ -17,6 +17,7 @@ import {
   createProjectWithFilesService,
   createProjectService,
   updateProjectWithFilesService,
+  getProjectsForDropdownService,
 } from "./projectService";
 import { reponseFormat } from "../../shared/responseFormat";
 export const createProjectWithFiles = catchAsync(
@@ -249,29 +250,79 @@ export const addProjectImages = catchAsync(
 // Add gallery items with file upload
 export const addGalleryItems = catchAsync(
   async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const files = req.files as Express.Multer.File[];
+    try {
+      const { id } = req.params;
+      const files = (req.files as Express.Multer.File[]) || [];
 
-    const galleryData = {
-      titles: req.body.titles ? JSON.parse(req.body.titles) : [],
-      categories: req.body.categories ? JSON.parse(req.body.categories) : [],
-    };
+      console.log("=== ADD GALLERY ITEMS CONTROLLER ===");
+      console.log("Project ID:", id);
+      console.log("Number of files:", files.length);
 
-    const result = await addGalleryItemsWithFilesService(
-      parseInt(id),
-      files,
-      galleryData
-    );
+      // Parse gallery data safely
+      let galleryData;
+      try {
+        galleryData = {
+          titles: req.body.titles ? JSON.parse(req.body.titles) : [],
+          categories: req.body.categories
+            ? JSON.parse(req.body.categories)
+            : [],
+        };
+      } catch (parseError) {
+        console.error("Error parsing gallery data:", parseError);
+        return reponseFormat(res, {
+          success: false,
+          statusCode: 400,
+          message: "Invalid gallery data format",
+        });
+      }
 
-    reponseFormat(res, {
-      success: true,
-      statusCode: 200,
-      message: result.message,
-      data: result,
-    });
+      const result = await addGalleryItemsWithFilesService(
+        parseInt(id),
+        files,
+        galleryData
+      );
+
+      reponseFormat(res, {
+        success: true,
+        statusCode: 200,
+        message: result.message,
+        data: result,
+      });
+    } catch (error) {
+      console.error("Error in addGalleryItems:", error);
+
+      reponseFormat(res, {
+        success: false,
+        statusCode: error.statusCode || 500,
+        message: error.message || "Failed to add gallery items",
+      });
+    }
   }
 );
+export const getProjectsForDropdown = catchAsync(
+  async (req: Request, res: Response) => {
+    try {
+      console.log("=== GET PROJECTS FOR DROPDOWN ===");
 
+      const projects = await getProjectsForDropdownService();
+
+      reponseFormat(res, {
+        success: true,
+        statusCode: 200,
+        message: "Projects fetched successfully for dropdown",
+        data: projects,
+      });
+    } catch (error) {
+      console.error("Error in getProjectsForDropdown:", error);
+
+      reponseFormat(res, {
+        success: false,
+        statusCode: 500,
+        message: error.message || "Failed to fetch projects for dropdown",
+      });
+    }
+  }
+);
 // Add gallery items without files (only URLs)
 export const addGalleryItemsData = catchAsync(
   async (req: Request, res: Response) => {

@@ -630,42 +630,129 @@ export const addGalleryItemsWithFilesService = async (
     categories?: string[];
   }
 ): Promise<any> => {
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-  });
+  try {
+    console.log("=== ADD GALLERY ITEMS SERVICE ===");
+    console.log("Project ID:", projectId);
+    console.log("Files count:", files.length);
+    console.log("Gallery data:", galleryData);
 
-  if (!project) {
-    // Clean up uploaded files if project doesn't exist
-    files.forEach((file) => deleteImageFile(file.path));
-    throw new APIError(404, "Project not found");
-  }
+    // Validate files
+    if (!files || files.length === 0) {
+      throw new APIError(400, "No files provided for gallery items");
+    }
 
-  const galleryItemsData = files.map((file, index) => {
-    const isImage = file.mimetype.startsWith("image/");
-    const isVideo = file.mimetype.startsWith("video/");
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      // Clean up uploaded files if project doesn't exist
+      files.forEach((file) => {
+        try {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+            console.log(`Cleaned up file: ${file.path}`);
+          }
+        } catch (cleanupError) {
+          console.error("Error cleaning up file:", cleanupError);
+        }
+      });
+      throw new APIError(404, "Project not found");
+    }
+
+    const galleryItemsData = files.map((file, index) => {
+      const isImage = file.mimetype.startsWith("image/");
+      const isVideo = file.mimetype.startsWith("video/");
+
+      // Validate file type
+      if (!isImage && !isVideo) {
+        throw new APIError(
+          400,
+          `File ${file.originalname} is not a valid image or video`
+        );
+      }
+
+      return {
+        title: galleryData.titles?.[index] || `Gallery Item ${index + 1}`,
+        category: galleryData.categories?.[index] || "general",
+        imageUrl: isImage
+          ? `/uploads/gallery/${path.basename(file.filename)}`
+          : null,
+        videoUrl: isVideo
+          ? `/uploads/gallery/${path.basename(file.filename)}`
+          : null,
+        projectId,
+      };
+    });
+
+    const result = await prisma.gallery.createMany({
+      data: galleryItemsData,
+    });
+
+    console.log(`Successfully added ${result.count} gallery items`);
 
     return {
-      title: galleryData.titles?.[index] || `Gallery Item ${index + 1}`,
-      category: galleryData.categories?.[index] || "general",
-      imageUrl: isImage
-        ? `/uploads/gallery/${path.basename(file.filename)}`
-        : null,
-      videoUrl: isVideo
-        ? `/uploads/gallery/${path.basename(file.filename)}`
-        : null,
+      success: true,
+      count: result.count,
       projectId,
+      projectName: project.name,
+      message: `${result.count} gallery items added to project "${project.name}"`,
     };
-  });
+  } catch (error) {
+    console.error("Error in addGalleryItemsWithFilesService:", error);
 
-  const result = await prisma.gallery.createMany({
-    data: galleryItemsData,
-  });
+    // Clean up uploaded files on error
+    if (files && files.length > 0) {
+      files.forEach((file) => {
+        try {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+            console.log(`Cleaned up file on error: ${file.path}`);
+          }
+        } catch (cleanupError) {
+          console.error("Error cleaning up file on error:", cleanupError);
+        }
+      });
+    }
 
-  return {
-    count: result.count,
-    projectId,
-    message: `${result.count} gallery items added to project`,
-  };
+    throw error; // Re-throw for controller to handle
+  }
+};
+export const getProjectsForDropdownService = async (): Promise<
+  Array<{ value: number; label: string }>
+> => {
+  try {
+    console.log("=== GET PROJECTS FOR DROPDOWN SERVICE ===");
+
+    const projects = await prisma.project.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+      where: {
+        // Optional: Add any filters if needed
+        // status: 'ACTIVE'
+      },
+      orderBy: {
+        name: "asc", // Alphabetical order
+      },
+    });
+
+    console.log(`Found ${projects.length} projects for dropdown`);
+
+    // Transform to value-label format for frontend dropdown
+    const dropdownProjects = projects.map((project) => ({
+      value: project.id,
+      label: project.name,
+    }));
+
+    console.log("Transformed projects for dropdown:", dropdownProjects);
+
+    return dropdownProjects;
+  } catch (error) {
+    console.error("Error in getProjectsForDropdownService:", error);
+    throw error;
+  }
 };
 // Get all projects with filtering and pagination
 export const getAllProjectsService = async (
