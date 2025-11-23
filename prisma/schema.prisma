@@ -138,6 +138,20 @@ model Newsletter {
   unsubscribedAt DateTime?
 }
 
+model Career {
+  id           Int      @id @default(autoincrement())
+  title        String
+  description  String?  @db.Text
+  type         String // full-time, part-time, contract, internship, freelance
+  deadline     DateTime
+  redirectLink String?
+  status       String   @default("active") // active, expired
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("careers")
+}
+
 enum Roles {
   admin
   employee

@@ -9,6 +9,7 @@ import { permissionRoutes } from "./modules/menu/permissionRoutes";
 import { contactRoutes } from "./modules/contact/contactRoutes";
 import { projectRoutes } from "./modules/projects/projectRoutes";
 import path from "path";
+import { careerRoutes } from "./modules/career/careerRoutes";
 
 const app: Application = express();
 
@@ -55,6 +56,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
+app.use("/api/v1/careers", careerRoutes);
 app.use("/api/v1", authRoutes);
 app.use("/api/v1", projectRoutes);
 app.use("/api/v1", menuRoutes);
