@@ -130,6 +130,19 @@ model Contact {
   replied   Boolean  @default(false) // mark if admin responded
 }
 
+model Blog {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String   @db.Text
+  type        String?
+  tag         String?
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("blogs")
+}
+
 model Newsletter {
   id             Int       @id @default(autoincrement())
   email          String    @unique @db.VarChar(150)

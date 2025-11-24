@@ -38,6 +38,44 @@ const galleryStorage = multer.diskStorage({
   },
 });
 // Create a dynamic storage that routes files based on field name
+// const dynamicStorage = multer.diskStorage({
+//   destination: (req: Request, file: Express.Multer.File, cb) => {
+//     let dir = "uploads/";
+
+//     if (file.fieldname === "projectImages") {
+//       dir += "projects/";
+//     } else if (file.fieldname === "galleryMedia") {
+//       dir += "gallery/";
+//     } else if (file.fieldname === "profileImg") {
+//       dir += "profiles/";
+//     }
+
+//     // Ensure directory exists
+//     if (!fs.existsSync(dir)) {
+//       fs.mkdirSync(dir, { recursive: true });
+//     }
+
+//     console.log(`Saving ${file.fieldname} to: ${dir}`);
+//     cb(null, dir);
+//   },
+//   filename: (req: Request, file: Express.Multer.File, cb) => {
+//     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+//     const fileExtension = path.extname(file.originalname);
+
+//     let prefix = "file";
+//     if (file.fieldname === "projectImages") {
+//       prefix = "project";
+//     } else if (file.fieldname === "galleryMedia") {
+//       prefix = "gallery";
+//     } else if (file.fieldname === "profileImg") {
+//       prefix = "profile";
+//     }
+
+//     const filename = `${prefix}-${uniqueSuffix}${fileExtension}`;
+//     console.log(`Generated filename for ${file.fieldname}: ${filename}`);
+//     cb(null, filename);
+//   },
+// });
 const dynamicStorage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb) => {
     let dir = "uploads/";
@@ -48,6 +86,8 @@ const dynamicStorage = multer.diskStorage({
       dir += "gallery/";
     } else if (file.fieldname === "profileImg") {
       dir += "profiles/";
+    } else if (file.fieldname === "blogImage") {
+      dir += "blogs/"; // Add blog images
     }
 
     // Ensure directory exists
@@ -69,6 +109,8 @@ const dynamicStorage = multer.diskStorage({
       prefix = "gallery";
     } else if (file.fieldname === "profileImg") {
       prefix = "profile";
+    } else if (file.fieldname === "blogImage") {
+      prefix = "blog"; // Add blog prefix
     }
 
     const filename = `${prefix}-${uniqueSuffix}${fileExtension}`;
@@ -121,6 +163,32 @@ export const galleryMediaUpload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit for videos
   },
 });
+
+// Configure storage for blog images
+const blogStorage = multer.diskStorage({
+  destination: (req: Request, file: Express.Multer.File, cb) => {
+    const dir = "uploads/blogs/";
+    // Ensure directory exists
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: (req: Request, file: Express.Multer.File, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const fileExtension = path.extname(file.originalname);
+    cb(null, "blog-" + uniqueSuffix + fileExtension);
+  },
+});
+
+// Blog image upload middleware
+export const uploadBlogImage = multer({
+  storage: blogStorage,
+  fileFilter: imageFileFilter, // Reuse existing image filter
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+}).single("blogImage");
 
 // Multiple file upload configurations
 export const uploadProjectImages = projectImageUpload.array(

@@ -10,6 +10,7 @@ import { contactRoutes } from "./modules/contact/contactRoutes";
 import { projectRoutes } from "./modules/projects/projectRoutes";
 import path from "path";
 import { careerRoutes } from "./modules/career/careerRoutes";
+import { blogRoutes } from "./modules/blogs/blogRoutes";
 
 const app: Application = express();
 
@@ -58,6 +59,8 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.use("/api/v1/careers", careerRoutes);
 app.use("/api/v1/contacts", contactRoutes);
+app.use("/api/v1/blogs", blogRoutes);
+
 app.use("/api/v1", authRoutes);
 app.use("/api/v1", projectRoutes);
 app.use("/api/v1", menuRoutes);
