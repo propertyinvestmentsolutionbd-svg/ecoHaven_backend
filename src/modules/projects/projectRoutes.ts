@@ -17,6 +17,7 @@ import {
   updateProjectWithFiles,
   getProjectsForDropdown,
   getAllGalleryImages,
+  getLocationsForDropdown,
 } from "./projectController";
 import {
   uploadAllMedia,
@@ -31,6 +32,7 @@ router.get("/projects", getAllProjects);
 router.get("/stats", getProjectStats);
 router.get("/:id", getProjectById);
 router.get("/projects/dropdown", getProjectsForDropdown);
+router.get("/projects/location/dropdown", getLocationsForDropdown);
 router.get("/project/all-gallery", getAllGalleryImages);
 
 // Protected admin routes

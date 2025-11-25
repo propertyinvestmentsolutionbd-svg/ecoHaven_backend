@@ -1132,3 +1132,52 @@ export const getAllGalleryImagesService = async (): Promise<any[]> => {
     throw error;
   }
 };
+export const getLocationsForDropdownService = async (): Promise<
+  Array<{ value: string; label: string }>
+> => {
+  try {
+    console.log("=== GET LOCATIONS FOR DROPDOWN SERVICE ===");
+
+    // Get unique locations using Prisma's distinct
+    const uniqueLocations = await prisma.project.findMany({
+      where: {
+        location: {
+          not: null,
+          not: "", // Exclude empty strings
+        },
+      },
+      select: {
+        location: true,
+      },
+      distinct: ["location"], // This ensures only unique locations
+      orderBy: {
+        location: "asc",
+      },
+    });
+
+    console.log(
+      `Found ${uniqueLocations.length} unique locations for dropdown`
+    );
+
+    // Transform to value-label format for frontend dropdown
+    // Value and label will be the same string (location name)
+    const dropdownLocations = uniqueLocations
+      .map((project) => ({
+        value: project.location!,
+        label: project.location!,
+      }))
+      .filter((location) => location.value.trim() !== "") // Filter out any empty strings
+      .filter(
+        (location, index, self) =>
+          // Additional uniqueness check (shouldn't be needed but added for safety)
+          index === self.findIndex((l) => l.value === location.value)
+      );
+
+    console.log("Transformed locations for dropdown:", dropdownLocations);
+
+    return dropdownLocations;
+  } catch (error) {
+    console.error("Error in getLocationsForDropdownService:", error);
+    throw error;
+  }
+};

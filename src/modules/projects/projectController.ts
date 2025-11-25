@@ -19,6 +19,7 @@ import {
   updateProjectWithFilesService,
   getProjectsForDropdownService,
   getAllGalleryImagesService,
+  getLocationsForDropdownService,
 } from "./projectService";
 import { reponseFormat } from "../../shared/responseFormat";
 export const createProjectWithFiles = catchAsync(
@@ -360,6 +361,30 @@ export const getAllGalleryImages = catchAsync(
         success: false,
         statusCode: 500,
         message: error.message || "Failed to retrieve gallery images",
+      });
+    }
+  }
+);
+export const getLocationsForDropdown = catchAsync(
+  async (req: Request, res: Response) => {
+    try {
+      console.log("=== GET LOCATIONS FOR DROPDOWN ===");
+
+      const locations = await getLocationsForDropdownService();
+
+      reponseFormat(res, {
+        success: true,
+        statusCode: 200,
+        message: "Locations fetched successfully for dropdown",
+        data: locations,
+      });
+    } catch (error) {
+      console.error("Error in getLocationsForDropdown:", error);
+
+      reponseFormat(res, {
+        success: false,
+        statusCode: 500,
+        message: error.message || "Failed to fetch locations for dropdown",
       });
     }
   }
