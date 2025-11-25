@@ -91,7 +91,10 @@ export const getUserPermissionsService = async (
   }
 
   const permissions = await prisma.userMenuPermission.findMany({
-    where: { userId },
+    where: {
+      userId,
+      canView: true, // ✅ Only get permissions where canView is true
+    },
     include: {
       menu: {
         select: {

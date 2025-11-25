@@ -551,6 +551,24 @@ export const updateUserWithProfileImageService = async (
 
     console.log("Parsed userData:", parsedUserData);
 
+    // Convert empty strings to null for unique fields
+    if (parsedUserData.linkedinUrl === "") {
+      parsedUserData.linkedinUrl = null;
+    }
+
+    // Also handle other optional string fields that might cause issues
+    const optionalFields = [
+      "designation",
+      "address",
+      "country",
+      "profileDescription",
+      "agentDescription",
+    ];
+    optionalFields.forEach((field) => {
+      if (parsedUserData[field] === "") {
+        parsedUserData[field] = null;
+      }
+    });
     // Check email uniqueness if being updated
     if (parsedUserData.email && parsedUserData.email !== user.email) {
       const existingUser = await prisma.user.findUnique({
