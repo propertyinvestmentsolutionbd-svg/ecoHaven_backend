@@ -143,6 +143,18 @@ model Blog {
   @@map("blogs")
 }
 
+model Review {
+  id           Int      @id @default(autoincrement())
+  reviewerName String
+  description  String   @db.Text
+  type         String? // New field instead of rating
+  imageUrl     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("reviews")
+}
+
 model Newsletter {
   id             Int       @id @default(autoincrement())
   email          String    @unique @db.VarChar(150)

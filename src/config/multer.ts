@@ -3,7 +3,18 @@ import multer from "multer";
 import path from "path";
 import { NextFunction, Request } from "express";
 import fs from "fs";
-
+// File filter for images only
+const imageFileFilter = (
+  req: Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  if (file.mimetype.startsWith("image/")) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only image files are allowed!"));
+  }
+};
 // Configure storage for project images
 const projectStorage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb) => {
@@ -37,6 +48,29 @@ const galleryStorage = multer.diskStorage({
     cb(null, "gallery-" + uniqueSuffix + fileExtension);
   },
 });
+const reviewStorage = multer.diskStorage({
+  destination: (req: Request, file: Express.Multer.File, cb) => {
+    const dir = "uploads/reviews/";
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: (req: Request, file: Express.Multer.File, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const fileExtension = path.extname(file.originalname);
+    cb(null, "review-" + uniqueSuffix + fileExtension);
+  },
+});
+
+// Review image upload middleware
+export const uploadReviewImage = multer({
+  storage: reviewStorage,
+  fileFilter: imageFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+}).single("reviewImage");
 // Create a dynamic storage that routes files based on field name
 // const dynamicStorage = multer.diskStorage({
 //   destination: (req: Request, file: Express.Multer.File, cb) => {
@@ -87,10 +121,11 @@ const dynamicStorage = multer.diskStorage({
     } else if (file.fieldname === "profileImg") {
       dir += "profiles/";
     } else if (file.fieldname === "blogImage") {
-      dir += "blogs/"; // Add blog images
+      dir += "blogs/";
+    } else if (file.fieldname === "reviewImage") {
+      dir += "reviews/"; // Add review images
     }
 
-    // Ensure directory exists
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
@@ -110,7 +145,9 @@ const dynamicStorage = multer.diskStorage({
     } else if (file.fieldname === "profileImg") {
       prefix = "profile";
     } else if (file.fieldname === "blogImage") {
-      prefix = "blog"; // Add blog prefix
+      prefix = "blog";
+    } else if (file.fieldname === "reviewImage") {
+      prefix = "review"; // Add review prefix
     }
 
     const filename = `${prefix}-${uniqueSuffix}${fileExtension}`;
@@ -118,18 +155,6 @@ const dynamicStorage = multer.diskStorage({
     cb(null, filename);
   },
 });
-// File filter for images only
-const imageFileFilter = (
-  req: Request,
-  file: Express.Multer.File,
-  cb: multer.FileFilterCallback
-) => {
-  if (file.mimetype.startsWith("image/")) {
-    cb(null, true);
-  } else {
-    cb(new Error("Only image files are allowed!"));
-  }
-};
 
 // File filter for images and videos
 const mediaFileFilter = (
