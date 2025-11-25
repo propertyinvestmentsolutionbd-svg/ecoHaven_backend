@@ -864,6 +864,7 @@ export const getAllUsersService = async (filters: {
         isFeatured: true,
         profileDescription: true,
         isAgent: true,
+        designation: true,
         agentDescription: true,
         twofaEnabled: true,
         isActive: true,
