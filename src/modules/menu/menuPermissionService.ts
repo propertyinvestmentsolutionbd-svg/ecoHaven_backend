@@ -287,7 +287,7 @@ export const getUserPermissionsWithAllMenusService = async (
       menuPath: menu.path,
       menuIcon: menu.icon,
       menuDescription: menu.description,
-      isAssigned: !!userPermission,
+      isAssigned: userPermission ? userPermission.canView : false, // ✅ This is correct
     };
   });
 

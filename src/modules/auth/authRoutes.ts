@@ -14,10 +14,12 @@ import {
   toggleUserStatus,
   verifyEmail,
   forgotPassword,
+  getEmployeesForDropdown,
 } from "./authController";
 import { uploadProfileImage } from "../../config/multer";
 
 const router = express.Router();
+router.get("/employees/dropdown", getEmployeesForDropdown);
 router.get("/employees", getAllUsers);
 
 // Get user by ID

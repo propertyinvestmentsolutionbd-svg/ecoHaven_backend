@@ -16,6 +16,7 @@ import {
   verifyEmailService,
   forgotPasswordService,
   deleteImageFile,
+  getEmployeesForDropdownService,
 } from "./authService";
 import catchAsync from "../../shared/catchAsync";
 import { reponseAuthFormat, reponseFormat } from "../../shared/responseFormat";
@@ -26,25 +27,30 @@ import {
 import { User } from "../../../generated/prisma";
 import APIError from "../../errorHelpers/APIError";
 
-// export const createUser: RequestHandler = catchAsync(
-//   async (req: Request, res: Response) => {
-//     const { ...userData } = req.body;
+export const getEmployeesForDropdown = catchAsync(
+  async (req: Request, res: Response) => {
+    try {
+      console.log("=== GET EMPLOYEES FOR DROPDOWN ===");
 
-//     const result = await createUserService(userData);
-//     let dataWithoutPass;
-//     if (result) {
-//       const { password, ...rest } = result;
-//       dataWithoutPass = rest;
-//     }
-//     // @ts-ignore
-//     reponseFormat<Omit<User, "password">>(res, {
-//       success: true,
-//       statusCode: 200,
-//       message: "User created successfully !",
-//       data: dataWithoutPass,
-//     });
-//   }
-// );
+      const employees = await getEmployeesForDropdownService();
+
+      reponseFormat(res, {
+        success: true,
+        statusCode: 200,
+        message: "Employees fetched successfully for dropdown",
+        data: employees,
+      });
+    } catch (error) {
+      console.error("Error in getEmployeesForDropdown:", error);
+
+      reponseFormat(res, {
+        success: false,
+        statusCode: 500,
+        message: error.message || "Failed to fetch employees for dropdown",
+      });
+    }
+  }
+);
 export const createUser: RequestHandler = catchAsync(
   async (req: Request, res: Response) => {
     let userData;

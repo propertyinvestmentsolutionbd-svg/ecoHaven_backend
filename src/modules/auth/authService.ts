@@ -28,33 +28,43 @@ import path from "path";
 import fs from "fs";
 import { getUserPermissionsService } from "../menu/menuPermissionService";
 
-// creating user
-// export const createUserService = async (user: User): Promise<User | null> => {
-//   const hashedPassword = await bcrypt.hash(
-//     user?.password,
-//     Number(config.bycrypt_salt_rounds)
-//   );
-//   user.password = hashedPassword;
+export const getEmployeesForDropdownService = async (): Promise<
+  Array<{ value: string; label: string }>
+> => {
+  try {
+    console.log("=== GET EMPLOYEES FOR DROPDOWN SERVICE ===");
 
-//   const result = await prisma.$transaction(async (tx) => {
-//     // Create user
-//     const newUser = await tx.user.create({
-//       data: user,
-//     });
+    const employees = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        role: "employee", // Only get employees, not admins
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
 
-//     // If user is admin, assign all menu permissions
-//     if (newUser.role === "admin") {
-//       await assignAllMenuPermissionsToUser(tx, newUser.id);
-//     }
+    console.log(`Found ${employees.length} active employees for dropdown`);
 
-//     return newUser;
-//   });
+    // Transform to value-label format for frontend dropdown
+    const dropdownEmployees = employees.map((employee) => ({
+      value: employee.id,
+      label: `${employee.name} (${employee.email})`,
+    }));
 
-//   if (!result) {
-//     throw new APIError(400, "failed to create User");
-//   }
-//   return result;
-// };
+    console.log("Transformed employees for dropdown:", dropdownEmployees);
+
+    return dropdownEmployees;
+  } catch (error) {
+    console.error("Error in getEmployeesForDropdownService:", error);
+    throw error;
+  }
+};
 export const createUserService = async (
   userData: IUserCreate,
   profileImage?: Express.Multer.File
@@ -90,7 +100,12 @@ export const createUserService = async (
       role: userData.role || "employee",
       designation: userData.designation || "",
       address: userData.address || "",
-      linkedinUrl: userData.linkedinUrl || "",
+      linkedinUrl:
+        userData.linkedinUrl &&
+        userData.linkedinUrl !== "null" &&
+        userData.linkedinUrl !== ""
+          ? userData.linkedinUrl
+          : null,
       profileDescription: userData.profileDescription || "",
       agentDescription: userData.agentDescription || "",
       isFeatured:

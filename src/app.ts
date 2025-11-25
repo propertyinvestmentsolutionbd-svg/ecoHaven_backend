@@ -65,8 +65,8 @@ app.use("/api/v1/reviews", reviewRoutes);
 
 app.use("/api/v1", authRoutes);
 app.use("/api/v1", projectRoutes);
-app.use("/api/v1", menuRoutes);
 app.use("/api/v1", permissionRoutes);
+app.use("/api/v1", menuRoutes);
 
 app.get("/", (req: Request, res: Response) => {
   res.send("Hello World!");
