@@ -18,6 +18,7 @@ import {
   createProjectService,
   updateProjectWithFilesService,
   getProjectsForDropdownService,
+  getAllGalleryImagesService,
 } from "./projectService";
 import { reponseFormat } from "../../shared/responseFormat";
 export const createProjectWithFiles = catchAsync(
@@ -339,7 +340,30 @@ export const addGalleryItemsData = catchAsync(
     });
   }
 );
+export const getAllGalleryImages = catchAsync(
+  async (req: Request, res: Response) => {
+    try {
+      console.log("=== GET ALL GALLERY IMAGES ===");
 
+      const galleryImages = await getAllGalleryImagesService();
+
+      reponseFormat(res, {
+        success: true,
+        statusCode: 200,
+        message: "All gallery images retrieved successfully",
+        data: galleryImages,
+      });
+    } catch (error) {
+      console.error("Error in getAllGalleryImages:", error);
+
+      reponseFormat(res, {
+        success: false,
+        statusCode: 500,
+        message: error.message || "Failed to retrieve gallery images",
+      });
+    }
+  }
+);
 // Get all projects
 export const getAllProjects = catchAsync(
   async (req: Request, res: Response) => {

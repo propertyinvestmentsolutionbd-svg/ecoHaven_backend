@@ -1084,3 +1084,51 @@ const deleteImageFile = async (imageUrl: string): Promise<void> => {
     console.error("Error deleting image file:", error);
   }
 };
+export const getAllGalleryImagesService = async (): Promise<any[]> => {
+  try {
+    console.log("=== GET ALL GALLERY IMAGES SERVICE ===");
+
+    // Get all gallery items with project information
+    const galleryItems = await prisma.gallery.findMany({
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+            projectType: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    console.log(
+      `Found ${galleryItems.length} gallery items across all projects`
+    );
+
+    // Transform the data to include project information
+    const galleryImages: any[] = galleryItems.map((item) => ({
+      id: item.id,
+      title: item.title,
+      // category: item.category,
+      imageUrl: item.imageUrl,
+      // videoUrl: item.videoUrl,
+      // projectId: item.projectId,
+      // projectName: item.project.name,
+      // projectType: item.project.projectType,
+      // createdAt: item.createdAt.toISOString().split("T")[0],
+    }));
+
+    // Filter only items that have images (not videos)
+    // const imagesOnly = galleryImages.filter((item) => item.imageUrl !== null);
+
+    console.log(`Found ${galleryImages.length} images (excluding videos)`);
+
+    return galleryImages;
+  } catch (error) {
+    console.error("Error in getAllGalleryImagesService:", error);
+    throw error;
+  }
+};

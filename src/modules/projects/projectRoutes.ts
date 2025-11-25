@@ -16,6 +16,7 @@ import {
   getAllProjects,
   updateProjectWithFiles,
   getProjectsForDropdown,
+  getAllGalleryImages,
 } from "./projectController";
 import {
   uploadAllMedia,
@@ -30,6 +31,7 @@ router.get("/projects", getAllProjects);
 router.get("/stats", getProjectStats);
 router.get("/:id", getProjectById);
 router.get("/projects/dropdown", getProjectsForDropdown);
+router.get("/project/all-gallery", getAllGalleryImages);
 
 // Protected admin routes
 // router.post("/createProject", createProject); // JSON only
