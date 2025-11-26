@@ -28,12 +28,12 @@ import {
 const router = express.Router();
 
 // Public routes (for frontend)
+router.get("/project/galleries", getAllGalleryImages);
 router.get("/projects", getAllProjects);
 router.get("/stats", getProjectStats);
 router.get("/project/:id", getProjectById);
 router.get("/projects/dropdown", getProjectsForDropdown);
 router.get("/projects/location/dropdown", getLocationsForDropdown);
-router.get("/project/all-gallery", getAllGalleryImages);
 
 // Protected admin routes
 // router.post("/createProject", createProject); // JSON only
