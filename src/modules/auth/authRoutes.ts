@@ -15,6 +15,7 @@ import {
   verifyEmail,
   forgotPassword,
   getEmployeesForDropdown,
+  getUsersForDropdown,
 } from "./authController";
 import { uploadProfileImage } from "../../config/multer";
 
@@ -33,6 +34,7 @@ router.post("/forgot-password", forgotPassword);
 router.post("/verify-email", verifyEmail);
 // router.post("/auth/signup", createUser);
 router.post("/auth/signup", uploadProfileImage, createUser);
+router.get("/agent", getUsersForDropdown);
 
 router.post("/auth/signin", loginUser);
 router.post("/auth/verify-2fa", verify2FA);

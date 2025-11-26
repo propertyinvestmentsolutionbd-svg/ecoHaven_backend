@@ -865,6 +865,7 @@ export const getAllUsersService = async (filters: {
         profileDescription: true,
         isAgent: true,
         designation: true,
+        country: true,
         agentDescription: true,
         twofaEnabled: true,
         isActive: true,
@@ -959,4 +960,69 @@ export const verifyEmailService = async (
     exists: true,
     message: "Email verified successfully",
   };
+};
+export const getUsersForDropdownService = async (): Promise<{
+  countries: Array<{ value: string; label: string }>;
+  agents: Array<{}>;
+}> => {
+  try {
+    console.log("=== GET USERS FOR DROPDOWN SERVICE ===");
+
+    // Get unique countries
+    const countries = await prisma.user.findMany({
+      select: {
+        country: true,
+      },
+      where: {
+        country: {
+          not: null,
+          not: "", // Exclude empty strings
+        },
+      },
+      distinct: ["country"],
+      orderBy: {
+        country: "asc",
+      },
+    });
+
+    console.log(`Found ${countries.length} unique countries`);
+
+    // Get agent users
+    const agents = await prisma.user.findMany({
+      where: {
+        isAgent: true,
+        isActive: true, // Only active agents
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+
+    console.log(`Found ${agents.length} agent users`);
+
+    // Transform countries to value-label format
+    const dropdownCountries = countries
+      .filter((user) => user.country && user.country.trim() !== "")
+      .map((user) => ({
+        value: user.country!,
+        label: user.country!,
+      }));
+
+    // Transform agents to value-label format
+    const dropdownAgents = agents.map((agent) => ({
+      value: agent.id,
+      label: agent.name,
+    }));
+
+    console.log("Transformed countries for dropdown:", dropdownCountries);
+    console.log("Transformed agents for dropdown:", dropdownAgents);
+
+    return {
+      countries: dropdownCountries,
+      agents: agents,
+    };
+  } catch (error) {
+    console.error("Error in getUsersForDropdownService:", error);
+    throw error;
+  }
 };

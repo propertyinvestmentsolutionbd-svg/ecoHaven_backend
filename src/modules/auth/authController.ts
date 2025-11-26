@@ -17,6 +17,7 @@ import {
   forgotPasswordService,
   deleteImageFile,
   getEmployeesForDropdownService,
+  getUsersForDropdownService,
 } from "./authService";
 import catchAsync from "../../shared/catchAsync";
 import { reponseAuthFormat, reponseFormat } from "../../shared/responseFormat";
@@ -462,5 +463,29 @@ export const verifyEmail: RequestHandler = catchAsync(
         exists: result.exists,
       },
     });
+  }
+);
+export const getUsersForDropdown = catchAsync(
+  async (req: Request, res: Response) => {
+    try {
+      console.log("=== GET USERS FOR DROPDOWN ===");
+
+      const dropdownData = await getUsersForDropdownService();
+
+      reponseFormat(res, {
+        success: true,
+        statusCode: 200,
+        message: "Users dropdown data fetched successfully",
+        data: dropdownData,
+      });
+    } catch (error) {
+      console.error("Error in getUsersForDropdown:", error);
+
+      reponseFormat(res, {
+        success: false,
+        statusCode: 500,
+        message: error.message || "Failed to fetch users dropdown data",
+      });
+    }
   }
 );
