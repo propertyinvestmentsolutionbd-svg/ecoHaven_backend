@@ -16,6 +16,7 @@ import {
   forgotPassword,
   getEmployeesForDropdown,
   getUsersForDropdown,
+  resend2FACode,
 } from "./authController";
 import { uploadProfileImage } from "../../config/multer";
 
@@ -31,6 +32,8 @@ router.delete("/:id", deleteUser);
 router.patch("/:id/toggle-status", toggleUserStatus);
 // Forgot password routes
 router.post("/forgot_password", forgotPassword);
+router.post("/resend-2fa", resend2FACode);
+
 router.post("/verify-email", verifyEmail);
 // router.post("/auth/signup", createUser);
 router.post("/auth/signup", uploadProfileImage, createUser);

@@ -18,6 +18,7 @@ import {
   deleteImageFile,
   getEmployeesForDropdownService,
   getUsersForDropdownService,
+  resend2FACodeService,
 } from "./authService";
 import catchAsync from "../../shared/catchAsync";
 import { reponseAuthFormat, reponseFormat } from "../../shared/responseFormat";
@@ -458,6 +459,37 @@ export const forgotPassword = catchAsync(
     }
   }
 );
+export const resend2FACode = catchAsync(async (req: Request, res: Response) => {
+  try {
+    console.log("=== RESEND 2FA CODE REQUEST ===");
+
+    const { tempToken } = req.body;
+
+    if (!tempToken) {
+      return reponseFormat(res, {
+        success: false,
+        statusCode: 400,
+        message: "Temporary token is required",
+      });
+    }
+
+    const result = await resend2FACodeService(tempToken);
+
+    reponseFormat(res, {
+      success: true,
+      statusCode: 200,
+      message: result.message,
+    });
+  } catch (error) {
+    console.error("Error in resend2FACode:", error);
+
+    reponseFormat(res, {
+      success: false,
+      statusCode: error.statusCode || 500,
+      message: error.message || "Failed to resend verification code",
+    });
+  }
+});
 
 // Verify email exists
 export const verifyEmail: RequestHandler = catchAsync(

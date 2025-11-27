@@ -1,6 +1,7 @@
-import { Secret } from "jsonwebtoken";
+import jwt, { Secret, JwtPayload } from "jsonwebtoken";
 import config from "../../config";
 import bcrypt from "bcrypt";
+// import  { , Secret, SignOptions } from "jsonwebtoken";
 
 import APIError from "../../errorHelpers/APIError";
 import {
@@ -934,6 +935,78 @@ export const forgotPasswordService = async (
   return {
     message: "Password has been reset successfully",
   };
+};
+export const resend2FACodeService = async (
+  tempToken: string
+): Promise<{ message: string; newTempToken?: string }> => {
+  try {
+    // Verify the temporary token
+    const decoded = jwt.verify(tempToken, config.jwt.temp_secret) as any;
+    console.log({ decoded });
+
+    if (!decoded.userId || !decoded.email) {
+      throw new APIError(401, "Invalid temporary token");
+    }
+
+    // Check if user exists and is active
+    const user = await prisma.user.findUnique({
+      where: {
+        id: decoded.userId,
+        email: decoded.email,
+        isActive: true,
+      },
+    });
+
+    if (!user) {
+      throw new APIError(404, "User not found or inactive");
+    }
+
+    // Generate new 2FA code (6 digits)
+    const twoFactorCode = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+
+    // Set expiration (5 minutes from now)
+    const twoFactorExpires = new Date(Date.now() + 5 * 60 * 1000);
+
+    // Update user with new 2FA code
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        twoFactorCode,
+        twoFactorExpires,
+      },
+    });
+
+    // Generate new temporary token with extended expiry
+    // const newTempToken = jwt.sign(
+    //   {
+    //     userId: user.id,
+    //     email: user.email,
+    //     twoFactorCode,
+    //   },
+    //   config.jwt.temp_secret,
+    //   { expiresIn: "10m" } // 10 minutes for the temp token
+    // );
+    await send2FACode(user.email, twoFactorCode);
+
+    // TODO: Send email with the new code
+    console.log(`2FA Code for ${user.email}: ${twoFactorCode}`);
+    // await send2FACodeEmail(user.email, twoFactorCode);
+
+    return {
+      message: "Verification code sent successfully",
+      // newTempToken,
+    };
+  } catch (error) {
+    if (
+      error.name === "JsonWebTokenError" ||
+      error.name === "TokenExpiredError"
+    ) {
+      throw new APIError(401, "Invalid or expired temporary token");
+    }
+    throw error;
+  }
 };
 
 // Verify email exists (optional - for frontend validation)
