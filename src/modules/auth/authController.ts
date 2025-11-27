@@ -428,23 +428,34 @@ export const getAllUsers: RequestHandler = catchAsync(
   }
 );
 
-// Forgot password - reset using email
-export const forgotPassword: RequestHandler = catchAsync(
+export const forgotPassword = catchAsync(
   async (req: Request, res: Response) => {
-    const { email, newPassword, confirmPassword } = req.body;
+    try {
+      console.log("=== FORGOT PASSWORD REQUEST ===");
 
-    const result = await forgotPasswordService({
-      email,
-      newPassword,
-      confirmPassword,
-    });
+      const { email, newPassword, confirmPassword } = req.body;
 
-    reponseFormat(res, {
-      success: true,
-      statusCode: 200,
-      message: result.message,
-      data: null,
-    });
+      const result = await forgotPasswordService({
+        email,
+        newPassword,
+        confirmPassword,
+      });
+
+      reponseFormat(res, {
+        success: true,
+        statusCode: 200,
+        message: result.message,
+        data: null,
+      });
+    } catch (error) {
+      console.error("Error in forgotPassword:", error);
+
+      reponseFormat(res, {
+        success: false,
+        statusCode: error.statusCode || 500,
+        message: error.message || "Failed to reset password",
+      });
+    }
   }
 );
 

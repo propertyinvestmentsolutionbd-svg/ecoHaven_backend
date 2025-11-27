@@ -30,7 +30,7 @@ router.patch("/:id/change-password", changePassword);
 router.delete("/:id", deleteUser);
 router.patch("/:id/toggle-status", toggleUserStatus);
 // Forgot password routes
-router.post("/forgot-password", forgotPassword);
+router.post("/forgot_password", forgotPassword);
 router.post("/verify-email", verifyEmail);
 // router.post("/auth/signup", createUser);
 router.post("/auth/signup", uploadProfileImage, createUser);

@@ -890,16 +890,15 @@ export const getAllUsersService = async (filters: {
     totalPages,
   };
 };
-// Simple forgot password service
 export const forgotPasswordService = async (
   payload: any
 ): Promise<{ message: string }> => {
   const { email, newPassword, confirmPassword } = payload;
 
-  // // Validate passwords match
-  // if (newPassword !== confirmPassword) {
-  //   throw new APIError(400, "Passwords do not match");
-  // }
+  // Validate passwords match
+  if (newPassword !== confirmPassword) {
+    throw new APIError(400, "Passwords do not match");
+  }
 
   // Validate password strength
   if (newPassword.length < 6) {
