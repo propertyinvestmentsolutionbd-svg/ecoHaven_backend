@@ -20,6 +20,7 @@ import {
   getProjectsForDropdownService,
   getAllGalleryImagesService,
   getLocationsForDropdownService,
+  getDashboardStatsService,
 } from "./projectService";
 import { reponseFormat } from "../../shared/responseFormat";
 export const createProjectWithFiles = catchAsync(
@@ -514,5 +515,29 @@ export const getProjectStats = catchAsync(
       message: "Project statistics retrieved successfully",
       data: result,
     });
+  }
+);
+export const getDashboardStats = catchAsync(
+  async (req: Request, res: Response) => {
+    try {
+      console.log("=== GET DASHBOARD STATS ===");
+
+      const statsData = await getDashboardStatsService();
+
+      reponseFormat(res, {
+        success: true,
+        statusCode: 200,
+        message: "Dashboard statistics fetched successfully",
+        data: statsData,
+      });
+    } catch (error) {
+      console.error("Error in getDashboardStats:", error);
+
+      reponseFormat(res, {
+        success: false,
+        statusCode: 500,
+        message: error.message || "Failed to fetch dashboard statistics",
+      });
+    }
   }
 );

@@ -1181,3 +1181,114 @@ export const getLocationsForDropdownService = async (): Promise<
     throw error;
   }
 };
+// Get dashboard statistics
+export const getDashboardStatsService = async (): Promise<
+  Array<{ id: number; value: string; label: string }>
+> => {
+  try {
+    console.log("=== GET DASHBOARD STATS SERVICE ===");
+
+    // Get all statistics in parallel for better performance
+    const [
+      totalProperties,
+      totalProjects,
+      ongoingProjects,
+      completedProjects,
+      totalEmployees,
+      totalAgents,
+      totalLandowners,
+      totalContacts,
+      totalNewsletterSubscribers,
+    ] = await Promise.all([
+      // Total Properties Listed (count of projects)
+      prisma.project.count(),
+
+      // Total Projects (same as properties for now)
+      prisma.project.count(),
+
+      // Ongoing Projects
+      prisma.project.count({
+        where: {
+          status: "Ongoing",
+        },
+      }),
+
+      // Completed Projects
+      prisma.project.count({
+        where: {
+          status: "Completed",
+        },
+      }),
+
+      // Total Employees (users with employee role)
+      prisma.user.count({
+        where: {
+          role: "employee",
+          isActive: true,
+        },
+      }),
+
+      // Total Agents (users with isAgent true)
+      prisma.user.count({
+        where: {
+          isAgent: true,
+          isActive: true,
+        },
+      }),
+
+      // Total Landowners (placeholder - you might need to create a separate model for landowners)
+      prisma.user.count({
+        where: {
+          isAgent: false,
+          role: "employee",
+          isActive: true,
+        },
+      }),
+
+      // Total Clients/Leads (count of contacts)
+      prisma.contact.count(),
+
+      // Total Newsletter Subscribers
+      prisma.newsletter.count({
+        where: {
+          subscribed: true,
+        },
+      }),
+    ]);
+
+    console.log("Dashboard stats calculated successfully");
+
+    // Transform to the required format
+    const statsData = [
+      {
+        id: 1,
+        value: totalProperties.toString(),
+        label: "Total Properties Listed",
+      },
+      // { id: 2, value: "200000/-", label: "Total Sales" }, // Placeholder - you might want to calculate this from actual sales data
+      { id: 3, value: ongoingProjects.toString(), label: "Ongoing Project" },
+      {
+        id: 4,
+        value: completedProjects.toString(),
+        label: "Total Project Completed",
+      },
+      // { id: 5, value: "800000/-", label: "Total Investment" }, // Placeholder
+      {
+        id: 6,
+        value: totalContacts.toString(),
+        label: "Total Clients / Leads",
+      },
+      { id: 7, value: totalEmployees.toString(), label: "Total Employee" },
+      // { id: 8, value: "80000", label: "Total site visit" }, // Placeholder - you might need to track site visits
+      { id: 9, value: totalAgents.toString(), label: "Total Agents" },
+      // { id: 10, value: totalLandowners.toString(), label: "Total Landowner" },
+    ];
+
+    console.log("Transformed stats data:", statsData);
+
+    return statsData;
+  } catch (error) {
+    console.error("Error in getDashboardStatsService:", error);
+    throw error;
+  }
+};
