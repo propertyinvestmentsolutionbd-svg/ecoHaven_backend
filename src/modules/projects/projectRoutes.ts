@@ -25,6 +25,7 @@ import {
   uploadGalleryMedia,
   uploadProjectImages,
 } from "../../config/multer";
+import auth from "../../middlewears/auth";
 
 const router = express.Router();
 
@@ -40,26 +41,23 @@ router.get("/projects/location/dropdown", getLocationsForDropdown);
 // router.post("/createProject", createProject); // JSON only
 router.post(
   "/createProject/with-files",
+  auth(),
   uploadAllMedia,
   createProjectWithFiles
 ); // With file uploads
 router.put(
   "/project/:id/update/with-files",
+  auth(),
   uploadAllMedia,
   updateProjectWithFiles
 );
 
 // router.put("/:id", updateProject);
-router.delete("/project/:id", deleteProject);
-router.post(
-  "/:id/images",
-
-  uploadProjectImages,
-  addProjectImages
-);
+router.delete("/project/:id", auth(), deleteProject);
+router.post("/:id/images", auth(), uploadProjectImages, addProjectImages);
 router.post(
   "/project/:id/gallery-items",
-
+  auth(),
   uploadGalleryMedia,
   addGalleryItems
 );
@@ -70,10 +68,6 @@ router.patch(
   setFeaturedImage
 );
 router.delete("/images/:imageId", deleteProjectImage);
-router.delete(
-  "/gallery-items/:galleryItemId",
-
-  deleteGalleryItem
-);
+router.delete("/gallery-items/:galleryItemId", auth(), deleteGalleryItem);
 
 export const projectRoutes = router;

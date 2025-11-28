@@ -192,7 +192,6 @@ export const verify2FA = catchAsync(async (req: Request, res: Response) => {
 export const getRefreshToken = catchAsync(
   async (req: Request, res: Response) => {
     const { refreshToken } = req.cookies;
-
     const result = await getRefreshTokenService(refreshToken);
 
     // set refresh token into cookie

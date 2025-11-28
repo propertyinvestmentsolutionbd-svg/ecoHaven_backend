@@ -11,6 +11,7 @@ import {
   markMultipleAsRead,
   getContactStats,
 } from "./contactController";
+import auth from "../../middlewears/auth";
 
 const router = express.Router();
 
@@ -18,12 +19,12 @@ const router = express.Router();
 router.post("/", createContact);
 
 // Protected admin routes
-router.get("/", getAllContacts);
+router.get("/", auth(), getAllContacts);
 router.get("/stats", getContactStats);
-router.get("/:id", getContactById);
-router.put("/:id", updateContact);
-router.delete("/:id", deleteContact);
-router.patch("/:id/read", markAsRead);
-router.patch("/:id/replied", markAsReplied);
+router.get("/:id", auth(), getContactById);
+router.put("/:id", auth(), updateContact);
+router.delete("/:id", auth(), deleteContact);
+router.patch("/:id/read", auth(), markAsRead);
+router.patch("/:id/replied", auth(), markAsReplied);
 
 export const contactRoutes = router;

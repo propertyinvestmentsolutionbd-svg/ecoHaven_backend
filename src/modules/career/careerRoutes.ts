@@ -7,13 +7,14 @@ import {
   updateCareer,
   deleteCareer,
 } from "./careerController";
+import auth from "../../middlewears/auth";
 
 const router = express.Router();
 
 router.get("/", getAllCareers);
-router.post("/", createCareer);
-router.get("/:id", getCareerById);
-router.put("/:id", updateCareer);
-router.delete("/:id", deleteCareer);
+router.post("/", auth(), createCareer);
+router.get("/:id", auth(), getCareerById);
+router.put("/:id", auth(), updateCareer);
+router.delete("/:id", auth(), deleteCareer);
 
 export const careerRoutes = router;

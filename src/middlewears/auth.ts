@@ -13,6 +13,7 @@ const auth =
       if (!token) {
         throw new APIError(401, "You are not authorized");
       }
+
       // verify token
       let verifiedUser = null;
 
@@ -20,7 +21,10 @@ const auth =
 
       req.user = verifiedUser; // role  , userid
       //  guard
-      if (requiredRoles.length && !requiredRoles.includes(verifiedUser.role)) {
+      if (
+        requiredRoles?.length > 0 &&
+        !requiredRoles.includes(verifiedUser.role)
+      ) {
         throw new APIError(403, "Forbidden");
       }
       next();

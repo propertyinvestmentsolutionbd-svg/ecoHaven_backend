@@ -5,6 +5,7 @@ import handleValidationError from "../errorHelpers/handleValidationError";
 import APIError from "../errorHelpers/APIError";
 // global error handler
 import { PrismaClientValidationError } from "@prisma/client/runtime/library";
+import { TokenExpiredError } from "jsonwebtoken";
 
 export const globalErrorHandler: ErrorRequestHandler = (
   err,
@@ -36,6 +37,16 @@ export const globalErrorHandler: ErrorRequestHandler = (
     message = err?.message;
     errorMessages = err?.message ? [{ path: "", message: err?.message }] : [];
     stack = err?.stack;
+  } else if (err instanceof TokenExpiredError) {
+    statusCode = 403;
+    message = "Token expired";
+    errorMessages = [
+      {
+        path: "",
+        message: `Token expired at ${err.expiredAt}. Please login again.`,
+      },
+    ];
+    stack = err.stack;
   } else if (err instanceof Error) {
     message = err?.message;
     errorMessages = err?.message ? [{ path: "", message: err?.message }] : [];

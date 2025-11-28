@@ -7,13 +7,14 @@ import {
   deleteBlog,
 } from "./blogController";
 import { uploadBlogImage } from "../../config/multer";
+import auth from "../../middlewears/auth";
 
 const router = express.Router();
 
-router.post("/", uploadBlogImage, createBlog);
+router.post("/", auth(), uploadBlogImage, createBlog);
 router.get("/", getAllBlogs);
-router.get("/:id", getBlogById);
-router.put("/:id", uploadBlogImage, updateBlog);
-router.delete("/:id", deleteBlog);
+router.get("/:id", auth(), getBlogById);
+router.put("/:id", auth(), uploadBlogImage, updateBlog);
+router.delete("/:id", auth(), deleteBlog);
 
 export const blogRoutes = router;
